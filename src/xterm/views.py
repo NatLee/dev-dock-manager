@@ -16,7 +16,6 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
 from xterm.task import run_image_task
-from xterm.task import remove_image_task
 from xterm.task import run_container_task
 from xterm.task import remove_container_task
 from xterm.task import stop_container_task
@@ -33,35 +32,10 @@ class Containers(APIView):
     def get(self, request):
         return render(request, 'containers.html')
 
-class Images(APIView):
-    permission_classes = (AllowAny,)
-    def get(self, request):
-        return render(request, 'images.html')
-
 class Console(APIView):
     permission_classes = (AllowAny,)
     def get(self, request, id):
         return render(request, 'console.html')
-
-class BrowseDockerHub(APIView):
-    permission_classes = (AllowAny,)
-    def get(self, request):
-        return render(request, 'browse.html')
-
-class BrowseDockerHubView(APIView):
-    permission_classes = (IsAuthenticated,)
-    def get(self, request):
-        page_number = request.GET.get('page','1')
-        q = request.GET.get('q','')
-
-        url = f'https://hub.docker.com/api/content/v1/products/search?page={page_number}&page_size=15&q={q}&type=image'
-        headers = {'Search-Version': 'v3'}
-        page = requests.get(url, headers=headers)
-        summary = page.json()['summaries']
-        return Response({
-            'summary': summary,
-            'q': q
-        })
 
 class ContainersListView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -72,6 +46,9 @@ class ContainersListView(APIView):
         # Serialize the container data
         container_data = []
         for container in containers:
+            if container.name in ['d-gui-manager-web', 'd-gui-manager-redis']:
+                # avoid to show the container of this manager
+                continue
             container_info = {
                 'id': container.id,
                 'name': container.name,
@@ -87,7 +64,6 @@ class ContainersListView(APIView):
 
         return Response({
             'containers': container_data,
-            'info': info  # Ensure this is in a serializable format
         })
 
 class ImagesListView(APIView):
@@ -141,12 +117,6 @@ def run_image(request):
     image_id = request.data['image_id']
     job = run_image_task.delay(image_id)  # Queue the job
     return JsonResponse({"task_id": job.id})  # Use job.id to get the job ID
-
-@api_view(['POST'])
-def remove_image(request):
-    image_id = request.data['image_id']
-    job = remove_image_task.delay(image_id)
-    return JsonResponse({"task_id": job.id})  # Use job.id here as well
 
 @api_view(['POST'])
 def start_stop_remove(request):

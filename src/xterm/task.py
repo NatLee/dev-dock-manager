@@ -1,7 +1,6 @@
 import docker
 from django_rq import job
 
-
 @job
 def run_image_task(image_id):
     client = docker.from_env()
@@ -17,16 +16,6 @@ def run_image_task(image_id):
 
     container_name = container.attrs['Name'][1:]
     msg = f"Container {container_name} ({image_name}) has been created"
-    return msg
-
-@job
-def remove_image_task(image_id):
-    client = docker.from_env()
-    try:
-        client.images.remove(image=image_id)
-        msg = f"Image {image_id} has been removed"
-    except docker.errors.APIError as err:
-        msg = str(err)
     return msg
 
 @job
