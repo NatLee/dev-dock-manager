@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Images{% endblock %}
+
+{% block content %}
+<div class="mx-5">
+   <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>Images</h2>
+      <button class="btn btn-secondary" id="refresh" onclick="fetchAndDisplayImages()">Refresh</button>
+   </div>
+   <div class="table-responsive">
+      <table class="table">
+         <thead>
+            <tr>
+               <th scope="col">Repository</th>
+               <th scope="col">Image Id</th>
+               <th scope="col">Size</th>
+               <th scope="col">Actions</th>
+            </tr>
+         </thead>
+         <tbody id="imageTableBody">
+         </tbody>
+      </table>
+   </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% load static %}
+<script src="{% static 'js/images.js' %}"></script>
+{% endblock %}
