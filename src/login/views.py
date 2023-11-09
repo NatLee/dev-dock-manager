@@ -12,5 +12,6 @@ from drf_yasg import openapi
 
 class Login(APIView):
     permission_classes = (AllowAny,)
+    swagger_schema = None
     def get(self, request):
         return render(request, 'login.html')
