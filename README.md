@@ -18,6 +18,12 @@ This feature is optional and can be enabled during container creation if your sy
 
 > Only support x86/64 machine.
 
+Notice that you need to clone the submodule at the first.
+
+```
+git submodule update --init --recursive
+```
+
 ## Quick start
 
 > Docker daemon must be running.
@@ -28,10 +34,10 @@ This feature is optional and can be enabled during container creation if your sy
 cd gui && docker-compose build
 ```
 
-2. Start the web service.
+2. Back to the root of this repo and use command to start the web service.
 
 ```
-docker-compose up -d
+docker-compose build && docker-compose up -d
 ```
 
 3. Create a superuser for Django admin.
