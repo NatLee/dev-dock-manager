@@ -1,4 +1,6 @@
 # Custom ignore files
+homes
+images
 
 log
 logs
@@ -13,7 +15,6 @@ backend/staticfiles
 
 .DS_Store
 desktop.ini
-
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
