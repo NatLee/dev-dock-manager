@@ -2,18 +2,36 @@ import docker
 from django_rq import job
 
 @job
-def run_image_task(image_id):
+def run_image_task(image_name, ports, volumes, environment, name, privileged=False, nvdocker=False):
     client = docker.from_env()
+    device_requests = []
+
+    if nvdocker:
+        # Define device requests for NVIDIA GPUs
+        device_requests += [
+            docker.types.DeviceRequest(
+                count=-1,  # -1 specifies all available GPUs
+                capabilities=[['gpu']],  # This is the equivalent of `--gpus all`
+                driver='nvidia'
+            )
+        ]
+
     container = client.containers.run(
-        image_id,
+        image_name,
         stdin_open=True,
         detach=True,
         tty=True,
+        ports=ports,
+        volumes=volumes,
+        environment=environment,
+        name=name,
+        privileged=privileged,
+        device_requests=device_requests
     )
+
     image_name = "none"
     if container.image.tags:
         image_name = container.image.tags[0]
-
     container_name = container.attrs['Name'][1:]
     msg = f"Container {container_name} ({image_name}) has been created"
     return msg

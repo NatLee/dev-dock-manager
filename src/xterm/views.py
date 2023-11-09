@@ -1,7 +1,4 @@
-import json
-
 import docker
-import requests
 import django_rq
 
 from django.shortcuts import render, redirect
@@ -10,10 +7,10 @@ from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework import status
 
 from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
 
 from xterm.task import run_image_task
 from xterm.task import run_container_task
@@ -21,21 +18,81 @@ from xterm.task import remove_container_task
 from xterm.task import stop_container_task
 from xterm.task import restart_container_task
 
+from xterm.utils.parse_ports import parse_ports
+from xterm.utils.is_int import is_int
+from xterm.utils.find_multiple_free_ports import find_multiple_free_ports
+from xterm.utils.check_port_in_use import check_port_in_use
+from xterm.utils.can_use_nvidia_docker import can_use_nvidia_docker
+
+from xterm.schemas import count_param, free_ports_response, error_response
+from xterm.schemas import run_container_request_body, run_container_responses
+from xterm.schemas import check_port_params, check_port_in_used_response
+
+GUI_IMAGE_TAG_NAME = 'gui-vnc'
+
 class Index(APIView):
     permission_classes = (AllowAny,)
+    swagger_schema = None
     def get(self, request):
         response = redirect('/login')
         return response
 
 class Containers(APIView):
     permission_classes = (AllowAny,)
+    swagger_schema = None
     def get(self, request):
         return render(request, 'containers.html')
 
 class Console(APIView):
     permission_classes = (AllowAny,)
+    swagger_schema = None
     def get(self, request, id):
         return render(request, 'console.html')
+
+class FreePortsAPIView(APIView):
+    permission_classes = [AllowAny]
+    @swagger_auto_schema(
+        operation_summary="Get Free Ports in host",
+        operation_description="Returns a list of free ports on the server",
+        manual_parameters=[count_param],
+        responses={
+            200: free_ports_response,
+            400: error_response,
+        }
+    )
+    def get(self, request, *args, **kwargs):
+        count = request.query_params.get('count', 30)
+        try:
+            count = int(count)
+            if count <= 0:
+                raise ValueError("Count must be a positive integer")
+        except ValueError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        free_ports = find_multiple_free_ports(count)
+        return Response({'free_ports': free_ports}, status=status.HTTP_200_OK)
+
+class PortCheckAPIView(APIView):
+
+    @swagger_auto_schema(
+        operation_summary="Check Port",
+        operation_description="Check if a port is in use in host",
+        manual_parameters=check_port_params,
+        responses=check_port_in_used_response
+    )
+    def get(self, request, *args, **kwargs):
+        port = request.query_params.get('port')
+        if port is None:
+            return JsonResponse({'error': 'Port parameter is missing'}, status=400)
+        try:
+            port = int(port)
+            is_used = check_port_in_use(port)
+            return JsonResponse({'port': port, 'is_used': is_used})
+        except ValueError:
+            return JsonResponse({'error': 'Invalid port value'}, status=400)
 
 class ContainersListView(APIView):
     permission_classes = (IsAuthenticated,)
@@ -46,17 +103,41 @@ class ContainersListView(APIView):
         # Serialize the container data
         container_data = []
         for container in containers:
-            if container.name in ['d-gui-manager-web', 'd-gui-manager-redis']:
-                # avoid to show the container of this manager
+            image_tag = None
+            image_tags = container.image.tags
+            if image_tags:
+                image_tag = image_tags[0]
+
+            if image_tag and image_tag.split(':')[0] != GUI_IMAGE_TAG_NAME:
+                # only select containers with name starting with `gui-d`
                 continue
+
+            # Fetch detailed container information
+            try:
+                container_detail = client.api.inspect_container(container.id)
+            except Exception:
+                continue  # Skip if container is not found
+
+            # Check for privileged mode and device requests (for GPUs)
+            privileged = container_detail['HostConfig'].get('Privileged', False)
+            device_requests:list = container_detail['HostConfig'].get('DeviceRequests', [])
+
+            nvdocker = False
+            if device_requests:
+                nvdocker = any(req.get('Driver', '') == 'nvidia' for req in device_requests)
+
             container_info = {
                 'id': container.id,
                 'name': container.name,
                 'status': container.status,
                 'command': container.attrs['Config']['Cmd'],
                 'short_id': container.short_id,
-                'image_tag': container.image.tags[0]
+                'image_tag': image_tag,
+                'ports': parse_ports(container.attrs['NetworkSettings']),
+                'privileged': privileged,
+                'nvdocker': nvdocker,
             }
+
             container_data.append(container_info)
 
         # Serialize additional information if necessary
@@ -112,11 +193,67 @@ class ConsoleView(APIView):
             'action': action
         })
 
-@api_view(['POST'])
-def run_image(request):
-    image_id = request.data['image_id']
-    job = run_image_task.delay(image_id)  # Queue the job
-    return JsonResponse({"task_id": job.id})  # Use job.id to get the job ID
+class RunContainerView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @swagger_auto_schema(
+        operation_summary="Run Container",
+        operation_description="Run a container with the specified parameters",
+        responses=run_container_responses,
+        request_body=run_container_request_body,
+    )
+    def post(self, request, *args, **kwargs):
+        container_name = request.data['container_name']
+        container_name = container_name.replace("/", "-")
+
+        novnc = request.data['novnc']
+        ssh = request.data['ssh']
+
+        if not all(is_int(val) for val in [novnc, ssh]):
+            return Response({"error": "Non-integer value provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = request.data['user']
+        password = request.data['password']
+        vnc_password = request.data['vnc_password']
+        root_password = request.data['root_password']
+
+        # Convert string input to Boolean
+        privileged = request.data.get('privileged', 'false')
+        if isinstance(privileged, str):
+            privileged = privileged.lower() == 'true'
+
+        nvdocker = request.data.get('nvdocker', 'false')
+        if isinstance(nvdocker, str):
+            nvdocker = nvdocker.lower() == 'true'
+
+        # Call the task function with the form inputs
+        job = run_image_task.delay(
+            image_name=GUI_IMAGE_TAG_NAME,
+            ports={
+                # {container_port: host_port}
+                # '5901/tcp': vnc, # no need to use vnc
+                '6901/tcp': novnc,
+                '22/tcp': ssh,
+            },
+            volumes={
+                # notice: docker in docker but using host path
+                # { host_location: {bind: container_location, mode: access_mode}}
+                '/etc/localtime': {'bind': '/etc/localtime', 'mode': 'ro'},
+                # need to use absolute path
+                #f'/home/hdre/docker-django-ui/homes/{container_name}': {'bind': '/root/Desktop', 'mode': 'rw'},
+            },
+            environment={
+                'VNC_PW': vnc_password,
+                'VNC_RESOLUTION': '1600x900',
+                'DEFAULT_USER': user,
+                'DEFAULT_USER_PASSWORD': password,
+                'ROOT_PASSWORD': root_password,
+            },
+            name=container_name,
+            privileged=privileged,
+            nvdocker=nvdocker
+        )
+        return JsonResponse({"task_id": job.id})
 
 @api_view(['POST'])
 def start_stop_remove(request):

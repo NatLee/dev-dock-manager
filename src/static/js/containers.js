@@ -29,7 +29,7 @@ function handleContainerAction(html_btn, cmd) {
     })
  }
 
- function fetchAndDisplayContainers() {
+function fetchAndDisplayContainers() {
 
      // Retrieve the JWT from local storage
      const accessToken = localStorage.getItem('accessToken');
@@ -64,12 +64,19 @@ function handleContainerAction(html_btn, cmd) {
                     `;
                 }
 
+                // Include indicators for privileged and nvdocker status
+                const privilegedStatus = item.privileged ? '<span class="badge bg-warning text-dark">Privileged</span>' : '';
+                const nvdockerStatus = item.nvdocker ? '<span class="badge bg-success">NV-Docker</span>' : '';
+
                 const row = `
                 <tr>
-                    <td>${item.name}</td>
-                    <td>${item.image_tag || '&lt;none&gt;'}</td>
                     <td>${item.short_id}</td>
-                    <td>${item.command}</td>
+                    <td>${item.name}</td>
+                    <td>
+                        <button id="novncBtn" class="btn btn-info btn-sm me-3" onclick="window.open(window.location.protocol+'//'+window.location.hostname+':${item.ports.novnc}')">${item.ports.novnc}</button>
+                    </td>
+                    <td>${item.ports.ssh}</td>
+                    <td>${privilegedStatus} ${nvdockerStatus}</td>
                     <td>
                         <div class='d-flex'>
                             <span class="btn ${item.status === "running" ? 'btn-success' : 'btn-secondary'} btn-sm" id="${item.id}-span">${item.status}</span>
