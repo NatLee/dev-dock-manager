@@ -1,7 +1,13 @@
 version: "3.3"
-   
+
+x-common-extra-hosts: &extra-hosts
+  # use host.docker.internal to access the host machine from within the container
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
 services:
   backend:
+    <<: [*extra-hosts]
     build:
       context: .
       dockerfile: ./Dockerfile

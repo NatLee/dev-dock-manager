@@ -194,7 +194,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 RQ_QUEUES = {
     'default': {
-        'URL': 'redis://d-docker-redis:6379',  # Adjust the Redis URL as needed.
+        'URL': 'redis://d-gui-manager-redis:6379',  # Adjust the Redis URL as needed.
         'DEFAULT_TIMEOUT': 500,
         'USE_REDIS_CACHE': 'default',
     },
@@ -203,7 +203,7 @@ RQ_QUEUES = {
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://d-docker-redis:6379',
+        'LOCATION': 'redis://d-gui-manager-redis:6379',
     },
 }
 
