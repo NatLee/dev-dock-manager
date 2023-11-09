@@ -3,7 +3,7 @@ from docker.errors import APIError, ContainerError
 
 def can_use_nvidia_docker() -> bool:
     client = docker.from_env()
-    test_image = 'nvidia/cuda:11.0-base'
+    test_image = 'nvidia/cuda:11.0.3-base-ubuntu20.04'
     test_command = 'nvidia-smi'
 
     try:
@@ -17,8 +17,8 @@ def can_use_nvidia_docker() -> bool:
         )
 
         # Fetch logs to check if nvidia-smi command was successful
-        logs = container.logs()
-        print(logs.decode('utf-8'))  # Optional: Print output for verification
+        #logs = container.logs()
+        #print(logs.decode('utf-8'))  # Optional: Print output for verification
 
         # If the command was successful, NVIDIA Docker is available
         return True

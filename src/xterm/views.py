@@ -49,6 +49,22 @@ class Console(APIView):
     def get(self, request, id):
         return render(request, 'console.html')
 
+class NvidiaDockerCheckAPIView(APIView):
+    """
+    API View to check if NVIDIA Docker can be used on the system.
+    """
+
+    def get(self, request, *args, **kwargs):
+        if can_use_nvidia_docker():
+            return Response(
+                {'nvidia_docker_available': True}
+            )
+        else:
+            return Response(
+                {'nvidia_docker_available': False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+
 class FreePortsAPIView(APIView):
     permission_classes = [AllowAny]
     @swagger_auto_schema(

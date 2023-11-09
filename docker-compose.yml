@@ -25,3 +25,8 @@ services:
   redis:
     image: redis:alpine
     container_name: d-gui-manager-redis
+
+  nvidia-cuda:
+    image: nvidia/cuda:11.0.3-base-ubuntu20.04
+    container_name: d-gui-cuda
+    entrypoint: ["echo", "CUDA image ready"]
