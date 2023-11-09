@@ -149,7 +149,6 @@ function checkPortAvailability(portInput) {
   });
 }
 
-
 function validatePortNumber(inputField) {
     const port = parseInt(inputField.value, 10);
     
@@ -167,10 +166,42 @@ function validatePortNumber(inputField) {
     }
   }
 
+function checkNvidiaDockerAvailability() {
+  fetch('/api/nvdocker/check')
+      .then(response => {
+          if (!response.ok) {
+              throw new Error('Network response was not ok.');
+          }
+          return response.json();
+      })
+      .then(data => {
+          const nvdockerCheckbox = document.getElementById('nvdocker');
+          nvdockerCheckbox.checked = false;
+          if (data.nvidia_docker_available) {
+              nvdockerCheckbox.disabled = false;
+          } else {
+              nvdockerCheckbox.disabled = true;
+          }
+          updateNvdockerLabel(data.nvidia_docker_available);
+      })
+      .catch(error => {
+          console.error('There has been a problem with your fetch operation:', error);
+      });
+}
+
+
+function updateNvdockerLabel(available) {
+  const nvdockerLabel = document.querySelector('label[for="nvdocker"]');
+  nvdockerLabel.textContent = available ? 
+      "Enable Nvidia Docker support" : 
+      "Nvidia Docker support not available";
+}
+
 function openContainerForm() {
     // Fetch free ports when the modal is opened
     fetchFreePorts();
-  
+    // Check if Nvidia Docker is available
+    checkNvidiaDockerAvailability();
     // Then show the modal using jQuery
     $('#containerModal').modal('show');
   }  
