@@ -10,6 +10,11 @@
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
   
+        
+        <div id="nvdockerAlert" class="alert alert-warning collapse" role="alert">
+          Ensure you have Nvidia GPU in your device or maybe you need to install the Nvidia Container Toolkit? 
+          <a href="https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html#installation" target="_blank">Learn more</a>.
+        </div>
 
         <!-- Modal Body -->
         <div class="modal-body bg-light px-4 py-3">
@@ -166,35 +171,53 @@ function validatePortNumber(inputField) {
     }
   }
 
-function checkNvidiaDockerAvailability() {
-  fetch('/api/nvdocker/check')
-      .then(response => {
-          if (!response.ok) {
-              throw new Error('Network response was not ok.');
-          }
-          return response.json();
-      })
-      .then(data => {
-          const nvdockerCheckbox = document.getElementById('nvdocker');
-          nvdockerCheckbox.checked = false;
-          if (data.nvidia_docker_available) {
-              nvdockerCheckbox.disabled = false;
-          } else {
-              nvdockerCheckbox.disabled = true;
-          }
-          updateNvdockerLabel(data.nvidia_docker_available);
-      })
-      .catch(error => {
-          console.error('There has been a problem with your fetch operation:', error);
+  function checkNvidiaDockerAvailability() {
+    const nvdockerCheckbox = document.getElementById('nvdocker');
+    fetch('/api/nvdocker/check')
+        .then(response => {
+            nvdockerCheckbox.checked = false;
+            if (response.status === 503) {
+                nvdockerCheckbox.disabled = true;
+                throw new Error('Nvidia Docker support is unavailable.');
+            }
+            if (!response.ok) {
+                throw new Error('Network response was not ok.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.nvidia_docker_available) {
+                nvdockerCheckbox.disabled = false;
+            } else {
+                nvdockerCheckbox.disabled = true;
+                showNvdockerAlert();
+            }
+            updateNvdockerLabel(data.nvidia_docker_available);
+        })
+        .catch(error => {
+            console.log('There has been a problem with your fetch operation:', error);
+            nvdockerCheckbox.disabled = true;
+            showNvdockerAlert();
       });
 }
 
+function showNvdockerAlert() {
+  const alertBox = document.getElementById('nvdockerAlert');
+  $(alertBox).collapse('show');
+
+  /*
+  // Automatically hide the alert after 5 seconds (5000 milliseconds)
+  setTimeout(() => {
+      $(alertBox).collapse('hide');
+  }, 5000);
+  */
+}
 
 function updateNvdockerLabel(available) {
-  const nvdockerLabel = document.querySelector('label[for="nvdocker"]');
-  nvdockerLabel.textContent = available ? 
-      "Enable Nvidia Docker support" : 
-      "Nvidia Docker support not available";
+    const nvdockerLabel = document.querySelector('label[for="nvdocker"]');
+    nvdockerLabel.textContent = available ? 
+        "Enable Nvidia Docker support" : 
+        "Nvidia Docker support not available";
 }
 
 function openContainerForm() {
@@ -219,11 +242,7 @@ document.getElementById('ssh').addEventListener('change', function() {
   }
 });
 
-// Fetch free ports when the modal is opened
-$('#containerModal').on('show.bs.modal', function () {
-    fetchFreePorts();
-});
-  
+
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('containerForm');
