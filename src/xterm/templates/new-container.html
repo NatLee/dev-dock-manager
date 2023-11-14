@@ -173,7 +173,14 @@ function validatePortNumber(inputField) {
 
   function checkNvidiaDockerAvailability() {
     const nvdockerCheckbox = document.getElementById('nvdocker');
-    fetch('/dashboard/api/nvdocker/check')
+    const accessToken = localStorage.getItem('accessToken');
+    fetch('/dashboard/api/nvdocker/check' {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+        }
+      })
         .then(response => {
           if (response.status === 503) {
             nvdockerCheckbox.checked = false;
