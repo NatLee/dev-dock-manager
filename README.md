@@ -37,6 +37,7 @@ cd gui && docker-compose build
 2. Back to the root of this repo and use command to start the web service.
 
 ```
+docker network create d-gui-network
 docker-compose build && docker-compose up -d
 ```
 
@@ -48,7 +49,7 @@ docker-compose build && docker-compose up -d
 bash dev-create-superuser.sh
 ```
 
-4. Go to http://localhost:8000, it will show the login page.
+4. Go to http://localhost:8000/dashboard, it will show the login page.
 
 ## Interface
 

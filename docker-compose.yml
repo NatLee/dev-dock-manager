@@ -61,7 +61,7 @@ services:
       - --api.insecure
       - --serverstransport.insecureskipverify=true
     ports:
-      - "80:80"
+      - "8000:80"
       - "8080:8080" # Traefik Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
