@@ -13,7 +13,7 @@ def parse_ports(container_info) -> Dict[str,str]:
     for port, mappings in port_info.items():
         port_number = port.split('/')[0]  # Removing the '/tcp' part
         service = port_mapping.get(port_number, 'Unknown')
-        
+
         # Assuming we only want the port
         if mappings:  # Check if there are any port mappings
             result_mapping[service] = str(mappings[0]['HostPort'])
