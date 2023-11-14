@@ -94,7 +94,7 @@
 // Function to fetch free ports and fill the form
 function fetchFreePorts() {
     const accessToken = localStorage.getItem('accessToken');
-    fetch('/api/ports?count=2',{
+    fetch('/dashboard/api/ports?count=2',{
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
@@ -115,7 +115,7 @@ function fetchFreePorts() {
 function checkPortAvailability(portInput) {
   const port = portInput.value;
   const accessToken = localStorage.getItem('accessToken');
-  fetch(`/api/ports/check?port=${port}`, {
+  fetch(`/dashboard/api/ports/check?port=${port}`, {
       method: 'GET',
       headers: {
           'Content-Type': 'application/json',
@@ -173,25 +173,26 @@ function validatePortNumber(inputField) {
 
   function checkNvidiaDockerAvailability() {
     const nvdockerCheckbox = document.getElementById('nvdocker');
-    fetch('/api/nvdocker/check')
+    fetch('/dashboard/api/nvdocker/check')
         .then(response => {
+          if (response.status === 503) {
             nvdockerCheckbox.checked = false;
-            if (response.status === 503) {
-                nvdockerCheckbox.disabled = true;
-                throw new Error('Nvidia Docker support is unavailable.');
-            }
-            if (!response.ok) {
-                throw new Error('Network response was not ok.');
-            }
-            return response.json();
+            nvdockerCheckbox.disabled = true;
+            throw new Error('Nvidia Docker support is unavailable.');
+          }
+          if (!response.ok) {
+            throw new Error('Network response was not ok.');
+          }
+          return response.json();
         })
         .then(data => {
-            if (data.nvidia_docker_available) {
-                nvdockerCheckbox.disabled = false;
-            } else {
-                nvdockerCheckbox.disabled = true;
-                showNvdockerAlert();
-            }
+          if (data.nvidia_docker_available) {
+            nvdockerCheckbox.disabled = false;
+          } else {
+            nvdockerCheckbox.checked = false;
+            nvdockerCheckbox.disabled = true;
+            showNvdockerAlert();
+          }
             updateNvdockerLabel(data.nvidia_docker_available);
         })
         .catch(error => {
@@ -259,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
         requestData.nvdocker = formData.get('nvdocker') === 'on';
         const accessToken = localStorage.getItem('accessToken');
 
-        fetch('/api/container/new', {
+        fetch('/dashboard/api/container/new', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
