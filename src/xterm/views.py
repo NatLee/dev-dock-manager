@@ -248,7 +248,7 @@ class RunContainerView(APIView):
             ports={
                 # {container_port: host_port}
                 # '5901/tcp': vnc, # no need to use vnc
-                '6901/tcp': novnc,
+                # '6901/tcp': novnc, # already use traefik to proxy the URL
                 '22/tcp': ssh,
             },
             volumes={
