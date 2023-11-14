@@ -27,28 +27,29 @@ from rest_framework.routers import DefaultRouter
 
 from django.conf import settings
 
-URL_PREFIX = 'api'
+MAIN_URL_PREFIX = 'dashboard'
+API_URL_PREFIX = 'api'
 
 urlpatterns = []
 
 # pages
 urlpatterns += [
     # admin
-    path(f"{URL_PREFIX}/__hidden_admin/", admin.site.urls),
+    path(f"{API_URL_PREFIX}/__hidden_admin/", admin.site.urls),
     # django-rq
-    path(f'{URL_PREFIX}/__django-rq/', include('django_rq.urls'))
+    path(f'{API_URL_PREFIX}/__django-rq/', include('django_rq.urls'))
 ]
 
 
 urlpatterns += [
     # google login
-    path(f"{URL_PREFIX}/auth/google/", include("custom_auth.urls")),
+    path(f"{API_URL_PREFIX}/auth/google/", include("custom_auth.urls")),
     # auth
-    path(f"{URL_PREFIX}/auth/", include("custom_jwt.urls")),
+    path(f"{API_URL_PREFIX}/auth/", include("custom_jwt.urls")),
     # login
     path("login", include("login.urls"), name="login"),
     # xterm
-    path("", include("xterm.urls"), name="xterm"),
+    path(f"{MAIN_URL_PREFIX}/", include("xterm.urls"), name="xterm"),
 ]
 
 # -------------- START - Swagger View --------------
