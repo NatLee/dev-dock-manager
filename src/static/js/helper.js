@@ -58,7 +58,7 @@ function sleep(ms) {
 
 async function getUpdate(task_id) {
    var flag = true;
-   let progressUrl = '/progress';
+   let progressUrl = '/dashboard/progress';
    const accessToken = localStorage.getItem('accessToken');
 
    while (flag) {

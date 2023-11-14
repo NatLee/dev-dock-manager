@@ -23,7 +23,7 @@ async function loadConsoleData(containerID, action) {
         const accessToken = localStorage.getItem('accessToken');
 
         // Include the JWT in the authorization header
-        const response = await fetch(`/api/console/${action}/${containerID}`, {
+        const response = await fetch(`/dashboard/api/console/${action}/${containerID}`, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${accessToken}`
@@ -102,18 +102,18 @@ function setupWebSocketConnection(containerID, action){
 }
 
 function getPathSegments() {
-    // This function assumes the pathname follows a specific pattern, e.g., "/api/action/containerID"
+    // This function assumes the pathname follows a specific pattern, e.g., "/dashboard/api/action/containerID"
     const segments = window.location.pathname.split('/').filter(Boolean);
 
     // Additional checks can be added here to ensure that segments[1] and segments[2] exist
-    if (segments.length < 3) {
+    if (segments.length < 4) {
         console.error('Unexpected pathname format:', window.location.pathname);
         return { action: null, containerID: null };
     }
 
     return {
-        action: segments[1],
-        containerID: segments[2],
+        action: segments[2],
+        containerID: segments[3],
     };
 }
 

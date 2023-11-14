@@ -2,7 +2,7 @@
 function handleContainerAction(html_btn, cmd) {
     html_btn.innerHTML = "Loading...";
     containerID = html_btn.dataset.id;
-    let url = '/api/containers/start-stop-remove'
+    let url = '/dashboard/api/containers/start-stop-remove'
     let data = { 'id': containerID, 'cmd': cmd };
     //console.log(cmd + "->" + containerID);
 
@@ -34,7 +34,7 @@ function fetchAndDisplayContainers() {
      // Retrieve the JWT from local storage
      const accessToken = localStorage.getItem('accessToken');
 
-     fetch('/api/containers', {
+     fetch('/dashboard/api/containers', {
          method: "GET",
          headers: {
              'Content-Type': 'application/json',
@@ -52,8 +52,9 @@ function fetchAndDisplayContainers() {
 
                 if (item.status === "running") {
                     actionButtons = `
-                        <button class="btn btn-info btn-sm me-3" onclick="window.open('/console/shell/${item.id}')">Console</button>
-                        <button class="btn btn-info btn-sm me-3" onclick="window.open('/console/attach/${item.id}')">Attach</button>
+                        <button id="novncBtn" class="btn btn-info btn-sm me-3" onclick="window.open('/novnc/${item.name}/?path=novnc/${item.name}/websockify')">NoVNC</button>
+                        <button class="btn btn-info btn-sm me-3" onclick="window.open('/dashboard/console/shell/${item.id}')">Console</button>
+                        <button class="btn btn-info btn-sm me-3" onclick="window.open('/dashboard/console/attach/${item.id}')">Attach</button>
                         <button data-id="${item.id}" class="btn btn-warning btn-sm me-3" onclick="handleContainerAction(this, 'restart')">Restart</button>
                         <button data-id="${item.id}" class="btn btn-warning btn-sm me-3" onclick="handleContainerAction(this, 'stop')">Stop</button>
                     `;
@@ -72,9 +73,6 @@ function fetchAndDisplayContainers() {
                 <tr>
                     <td>${item.short_id}</td>
                     <td>${item.name}</td>
-                    <td>
-                        <button id="novncBtn" class="btn btn-info btn-sm me-3" onclick="window.open(window.location.protocol+'//'+window.location.hostname+':${item.ports.novnc}')">${item.ports.novnc}</button>
-                    </td>
                     <td>${item.ports.ssh}</td>
                     <td>${privilegedStatus} ${nvdockerStatus}</td>
                     <td>

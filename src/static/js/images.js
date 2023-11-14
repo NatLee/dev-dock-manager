@@ -6,7 +6,7 @@ function handleImageAction(html_btn, action) {
 
     let data = { 'image_id': image_id };
 
-    let url = action === 'run' ? '/api/images/run' : '/api/images/remove';
+    let url = action === 'run' ? '/dashboard/api/images/run' : '/dashboard/api/images/remove';
 
     console.log(`${action.charAt(0).toUpperCase() + action.slice(1)} -> ${image_id}`);
 
@@ -39,7 +39,7 @@ function fetchAndDisplayImages() {
     // Retrieve the JWT from local storage
     const accessToken = localStorage.getItem('accessToken');
 
-    fetch('/api/images', {
+    fetch('/dashboard/api/images', {
         method: "GET",
         headers: {
             'Content-Type': 'application/json',
