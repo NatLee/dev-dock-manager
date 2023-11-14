@@ -222,10 +222,9 @@ class RunContainerView(APIView):
         container_name = request.data['container_name']
         container_name = container_name.replace("/", "-")
 
-        novnc = request.data['novnc']
         ssh = request.data['ssh']
 
-        if not all(is_int(val) for val in [novnc, ssh]):
+        if not all(is_int(val) for val in [ssh]):
             return Response({"error": "Non-integer value provided"}, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.data['user']

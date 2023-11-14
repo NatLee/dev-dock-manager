@@ -42,13 +42,10 @@ error_response = openapi.Response(
 
 run_container_request_body = openapi.Schema(
     type=openapi.TYPE_OBJECT,
-    required=["container_name", "novnc", "ssh", "user", "password", "vnc_password", "root_password"],
+    required=["container_name", "ssh", "user", "password", "vnc_password", "root_password"],
     properties={
         "container_name": openapi.Schema(
             type=openapi.TYPE_STRING, description="Name of the container"
-        ),
-        "novnc": openapi.Schema(
-            type=openapi.TYPE_INTEGER, description="noVNC port"
         ),
         "ssh": openapi.Schema(
             type=openapi.TYPE_INTEGER, description="SSH port"

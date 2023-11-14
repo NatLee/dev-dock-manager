@@ -27,13 +27,6 @@
               </div>
             </div>
             <div class="mb-3">
-              <label for="novnc" class="form-label">noVNC Port:</label>
-              <input type="number" class="form-control" id="novnc" name="novnc" placeholder="Enter noVNC port" onchange="validatePortNumber(this)" required>
-              <div class="invalid-feedback">
-                Please enter a valid noVNC port number.
-              </div>
-            </div>
-            <div class="mb-3">
               <label for="ssh" class="form-label">SSH Port:</label>
               <input type="number" class="form-control" id="ssh" name="ssh" placeholder="Enter SSH port" onchange="validatePortNumber(this)" required>
               <div class="invalid-feedback">
@@ -103,9 +96,8 @@ function fetchFreePorts() {
     })
       .then(response => response.json())
       .then(data => {
-        if(data && data.free_ports.length >= 2) {
-          document.getElementById('novnc').value = data.free_ports[0];
-          document.getElementById('ssh').value = data.free_ports[1];
+        if(data && data.free_ports.length >= 1) {
+          document.getElementById('ssh').value = data.free_ports[0];
         }
       })
       .catch(error => console.error('Error fetching free ports:', error));
@@ -238,12 +230,6 @@ function openContainerForm() {
   }  
 
 // Add event listener to port input fields
-document.getElementById('novnc').addEventListener('change', function() {
-  if(this.value) {
-    checkPortAvailability(this);
-  } 
-});
-
 document.getElementById('ssh').addEventListener('change', function() {
   if(this.value) {
     checkPortAvailability(this);
