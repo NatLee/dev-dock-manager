@@ -6,6 +6,20 @@ This project combines the following repositories:
 - [GUI-container-using-xfce-with-vnc](https://github.com/NatLee/GUI-container-using-xfce-with-vnc)
 - [django-docker-gui](https://github.com/NatLee/django-docker-gui)
 
+## Contains
+
+- Traefik
+
+    This tool is used to proxy containers of multi-GUI NoVNC in the main port.
+
+- Django Dashboard
+
+    The dashboard of GUI container list is developed by using Django framework.
+
+- Nvidia Docker Checker
+
+    `docker-compose.yml` contains service of `nvidia-cuda` and it's used to check the host can run Nvidia docker or not.
+
 ## Nvidia Docker Support
 
 Nvidia Docker support is available under certain conditions.
