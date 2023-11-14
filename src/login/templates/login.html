@@ -108,8 +108,8 @@
         if (accessToken) {
             const tokenIsValid = await verifyAccessToken(accessToken);
             if (tokenIsValid) {
-                // Token is valid or was successfully renewed, redirect to /containers
-                window.location.href = '/containers';
+                // Token is valid or was successfully renewed, redirect to dashboard/containers
+                window.location.href = '/dashboard/containers';
                 return;
             }
         }
@@ -150,7 +150,7 @@
                 localStorage.setItem('refreshToken', data.refresh_token);
              
                 // Redirect to the containers page
-                window.location.href = '/containers';
+                window.location.href = '/dashboard/containers';
             })
             .catch(error => {
                 // Use SweetAlert to show the error
