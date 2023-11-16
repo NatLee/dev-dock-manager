@@ -61,6 +61,10 @@ VALID_REGISTER_DOMAINS = ["gmail.com"]
 
 # Application definition
 INSTALLED_APPS = [
+    # websocket
+    "daphne",
+    "channels",
+    "channels_redis",
     # django
     'django.contrib.admin',
     'django.contrib.auth',
@@ -113,6 +117,18 @@ TEMPLATES = [
 
 ASGI_APPLICATION = "backend.asgi.application"
 WSGI_APPLICATION = "backend.wsgi.application"
+
+# -------------- START - Channel Setting --------------
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("d-gui-manager-redis", 6379)],
+        },
+    },
+}
+# -------------- END - Channel Setting --------------
+
 
 # -------------- START - Swagger Setting --------------
 
