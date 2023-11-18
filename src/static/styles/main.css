@@ -185,3 +185,23 @@ body {
   .active-pulse {
     animation: pulse 2s infinite;
   }
+.websocket-status {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background-color: #dc3545;
+  /* Default to disconnected color */
+  margin-left: 10px;
+  /* Space between title and status indicator */
+  margin-bottom: 12px;
+}
+
+.websocket-status.connected {
+  background-color: #28a745;
+  /* Green for connected */
+}
+
+.websocket-status.disconnected {
+  background-color: #dc3545;
+  /* Red for disconnected/error */
+}

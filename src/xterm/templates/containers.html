@@ -7,10 +7,13 @@
 <div class="mx-5">
 
    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h2>Development GUI Containers</h2>
+      <div class="d-flex align-items-center">
+         <h2>Development GUI Containers</h2>
+         <div class="websocket-status ml-2" id="websocket-status"></div>
+      </div>
       <div>
          <button class="btn btn-secondary" id="newContainer" onclick="openContainerForm()">+</button>
-         <button class="btn btn-secondary" id="refresh" onclick="fetchAndDisplayContainers()">↻</button>
+         <button class="btn btn-secondary ml-2" id="refresh" onclick="fetchAndDisplayContainers()">↻</button>
       </div>
    </div>
    <div class="table-responsive">
