@@ -111,12 +111,10 @@ function notificationWebsocket() {
         updateWebSocketStatus(true);
     };
 
-
     socket.onmessage = function (event) {
         const data = JSON.parse(event.data);
         console.log('Notification message:', data.message);
         let action = data.message.action;
-
         if (action === "WAITING") {
             createToastAlert(data.message.details, false);
             let containerID = data.message.data.container_id;
@@ -141,7 +139,6 @@ function notificationWebsocket() {
         // Reconnect after 3 seconds
         setTimeout(notificationWebsocket, 3000);
     };
-
 
     // Handle any errors that occur.
     socket.onerror = function (error) {
