@@ -270,12 +270,28 @@ class RunContainerView(APIView):
         )
         return JsonResponse({"task_id": job.id})
 
+from xterm.consumers import send_notification_to_group
+
 @api_view(['POST'])
 def start_stop_remove(request):
     cmd = request.data['cmd']
     _id = request.data['id']
 
     job = None
+
+    if cmd == "start" or cmd == "restart" or cmd == "stop"  or cmd == "remove":
+        # ========================
+        # Send notification to group
+        message = {
+            "action": "WAITING",
+            "details": f"Waiting [{_id[:8]}] for the task to complete [{cmd}]",
+            "data": {
+                "container_id": _id,
+                "cmd": cmd,
+            }
+        }
+        send_notification_to_group(message)
+        # ========================
 
     if cmd == "start":
         job = run_container_task.delay(_id)
@@ -287,9 +303,11 @@ def start_stop_remove(request):
         job = restart_container_task.delay(_id)
 
     if job:
-        return JsonResponse({"task_id": job.id})
+        job_id = job.id
+        return JsonResponse({"task_id": job_id})
 
     return JsonResponse({"task_id": None})
+
 
 def check_progress(request, task_id):
     queue = django_rq.get_queue('default')
