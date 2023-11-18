@@ -24,6 +24,5 @@ urlpatterns = [
     path('api/ports/check', views.PortCheckAPIView.as_view(), name='check-port'),
     path('api/nvdocker/check', views.NvidiaDockerCheckAPIView.as_view(), name='check-nvdocker'),
 
-    path('progress/<slug:task_id>', views.check_progress, name='check-progress'),
 
 ]
