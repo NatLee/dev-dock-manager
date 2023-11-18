@@ -271,12 +271,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Handle success
             console.log(data);
             $('#containerModal').modal('hide'); // Close the modal if using Bootstrap 4
-            // If using Bootstrap 5, use `bootstrap.Modal.getInstance(document.getElementById('containerModal')).hide();`
-            // Optionally refresh container list or notify the user here
-            getUpdate(data.task_id).then(() => {
-                fetchAndDisplayContainers();
-                createToastAlert('Container created successfully.', false);
-            })
         })
         .catch((error) => {
         // Handle errors

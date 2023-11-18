@@ -27,10 +27,7 @@ function handleImageAction(html_btn, action) {
        }
        return response.json();    
     }).then(data => {
-       console.log(data["task_id"])
-       return getUpdate(data["task_id"])
-    }).then(() => {
-       fetchAndDisplayImages();
+        console.log(data["task_id"])
     })
 }
 
