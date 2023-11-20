@@ -125,7 +125,7 @@ function notificationWebsocket() {
                 <span class="btn btn-warning btn-sm me-3">Waiting</span>
             `;
         }
-        if (action === "CREATED" || action === "STARTED" || action === "STOPPED" || action === "REMOVED") {
+        if (action === "CREATED" || action === "STARTED" || action === "STOPPED" || action === "REMOVED" || action === "RESTARTED") {
             createToastAlert(data.message.details, false);
             fetchAndDisplayContainers();
         }
