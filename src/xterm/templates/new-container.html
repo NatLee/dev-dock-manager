@@ -237,54 +237,58 @@ document.getElementById('ssh').addEventListener('change', function() {
 });
 
 
-
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('containerForm');
-    form.addEventListener('submit', function(event) {
-    event.preventDefault(); // Stop the form from submitting the traditional way
+  const form = document.getElementById('containerForm');
+  form.addEventListener('submit', function(event) {
+      event.preventDefault(); // Stop the form from submitting the traditional way
 
-    if (form.checkValidity()) {
-        // Form is valid, send the data
-        const formData = new FormData(form);
-        const requestData = Object.fromEntries(formData.entries());
-        // `on` -> `true`
-        // `off` -> `false
-        requestData.privileged = formData.get('privileged') === 'on';
-        requestData.nvdocker = formData.get('nvdocker') === 'on';
-        const accessToken = localStorage.getItem('accessToken');
+      if (form.checkValidity()) {
+          // Form is valid, send the data
+          const formData = new FormData(form);
+          const requestData = Object.fromEntries(formData.entries());
+          requestData.privileged = formData.get('privileged') === 'on';
+          requestData.nvdocker = formData.get('nvdocker') === 'on';
+          const accessToken = localStorage.getItem('accessToken');
 
-        fetch('/dashboard/api/container/new', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`
-        },
-        body: JSON.stringify(requestData),
-        })
-        .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-        })
-        .then(data => {
-            // Handle success
-            console.log(data);
-            $('#containerModal').modal('hide'); // Close the modal if using Bootstrap 4
-        })
-        .catch((error) => {
-        // Handle errors
-        Swal.fire({
-            icon: 'error',
-            title: 'Oops...',
-            text: error,
+          fetch('/dashboard/api/container/new', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${accessToken}`
+              },
+              body: JSON.stringify(requestData),
+          })
+          .then(response => {
+              if (!response.ok && response.status === 400) {
+                  // Handle 400 response
+                  return response.json().then(data => {
+                      throw new Error(data.error || 'An error occurred');
+                  });
+              } else if (!response.ok) {
+                  // Handle other types of errors
+                  throw new Error('Network error or server issue');
+              }
+              return response.json();
+          })
+          .then(data => {
+              // Handle success
+              console.log(data);
+              $('#containerModal').modal('hide'); // Close the modal if using Bootstrap 4
+          })
+          .catch((error) => {
+              // Display error message to the user
+              Swal.fire({
+                  icon: 'error',
+                  title: 'Error',
+                  text: error.message
+              });
           });
-        // Display error message to the user using SweetAlert or another method
-        });
-    } else {
-        // Form is invalid, trigger validation
-        form.reportValidity();
-    }
-    });
+      } else {
+          // Form is invalid, trigger validation
+          form.reportValidity();
+      }
+  });
 });
+
+
 </script>

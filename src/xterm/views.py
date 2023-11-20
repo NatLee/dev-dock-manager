@@ -222,6 +222,29 @@ class RunContainerView(APIView):
         container_name = request.data['container_name']
         container_name = container_name.replace("/", "-")
 
+        # Container name must be at least 2 character long
+        if len(container_name) < 2:
+            return Response({
+                'error': 'Container name must be at least 1 character long'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Container name must start with a letter
+        if not container_name[0].isalpha():
+            return Response({
+                'error': 'Container name must start with a letter [a-zA-Z]'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if the container name is already in use
+        client = docker.from_env()
+        try:
+            client.containers.get(container_name)
+            return Response({
+                'error': f'Container name {container_name} is already in use'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except docker.errors.NotFound:
+            pass
+
+
         ssh = request.data['ssh']
 
         if not all(is_int(val) for val in [ssh]):
@@ -268,7 +291,10 @@ class RunContainerView(APIView):
             privileged=privileged,
             nvdocker=nvdocker
         )
-        return JsonResponse({"task_id": job.id})
+        return JsonResponse({
+            "container_name": container_name,
+            "task_id": job.id
+        })
 
 from xterm.consumers import send_notification_to_group
 
