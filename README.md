@@ -1,5 +1,7 @@
 # Development Container Manager
 
+![workflow](./doc/workflow.gif)
+
 This is a Docker container manager developed using Django, providing isolated development environments with a suite of base functions and packages for each user on the same machine.
 
 This project combines the following repositories:
