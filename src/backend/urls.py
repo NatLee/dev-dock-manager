@@ -47,7 +47,7 @@ urlpatterns += [
     # auth
     path(f"{API_URL_PREFIX}/auth/", include("custom_jwt.urls")),
     # login
-    path("login", include("login.urls"), name="login"),
+    path("", include("login.urls"), name="entry"),
     # xterm
     path(f"{MAIN_URL_PREFIX}/", include("xterm.urls"), name="xterm"),
 ]

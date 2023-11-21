@@ -6,8 +6,6 @@ from xterm import views
 logger = logging.getLogger(__name__)
 
 urlpatterns = [
-    path('', views.Index.as_view(), name='index'),
-
     path('api/images', views.ImagesListView.as_view(), name='images-api'),
 
     path('containers', views.Containers.as_view(), name='containers'),

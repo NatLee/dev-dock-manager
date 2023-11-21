@@ -24,6 +24,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:rw
     labels:
       - "traefik.enable=true"
+      # Define router for /
+      - "traefik.http.routers.backend-root.rule=Path(`/`)"
+      - "traefik.http.routers.backend-root.service=backend-service"
       # Define router for /login
       - "traefik.http.routers.backend-login.rule=PathPrefix(`/login`)"
       - "traefik.http.routers.backend-login.service=backend-service"

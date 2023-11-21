@@ -30,13 +30,6 @@ from xterm.schemas import check_port_params, check_port_in_used_response
 
 GUI_IMAGE_TAG_NAME = 'gui-vnc'
 
-class Index(APIView):
-    permission_classes = (AllowAny,)
-    swagger_schema = None
-    def get(self, request):
-        response = redirect('/login')
-        return response
-
 class Containers(APIView):
     permission_classes = (AllowAny,)
     swagger_schema = None
