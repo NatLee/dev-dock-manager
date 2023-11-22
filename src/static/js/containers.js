@@ -65,11 +65,17 @@ function fetchAndDisplayContainers() {
                 // Include indicators for privileged and nvdocker status
                 const privilegedStatus = item.privileged ? '<span class="badge bg-warning text-dark">Privileged</span>' : '';
                 const nvdockerStatus = item.nvdocker ? '<span class="badge bg-success">NV-Docker</span>' : '';
+                
+                // Convert and format the sizes from bytes to GB
+                const sizeInGB = (item.size_raw / (1024 * 1024 * 1024)).toFixed(2);
+                const fullSizeInGB = (item.size_fs / (1024 * 1024 * 1024)).toFixed(2);
 
                 const row = `
                 <tr>
                     <td>${item.short_id}</td>
                     <td>${item.name}</td>
+                    <td>
+                        <div>${sizeInGB} | ${fullSizeInGB}</div>
                     <td>${item.ports.ssh}</td>
                     <td>${privilegedStatus} ${nvdockerStatus}</td>
                     <td>

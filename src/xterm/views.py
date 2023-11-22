@@ -110,6 +110,12 @@ class ContainersListView(APIView):
         client = docker.from_env()
         containers = client.containers.list(all=True)
 
+        # Get system-wide information
+        info = client.df()
+        # Create a dictionary for quick access to container sizes
+        container_sizes_rw = {c['Id']: c.get('SizeRw', 0) for c in info['Containers']}
+        container_sizes_rfs = {c['Id']: c.get('SizeRootFs', 0) for c in info['Containers']}
+
         # Serialize the container data
         container_data = []
         for container in containers:
@@ -127,6 +133,10 @@ class ContainersListView(APIView):
                 container_detail = client.api.inspect_container(container.id)
             except Exception:
                 continue  # Skip if container is not found
+
+            # Fetch container size using the dictionary
+            container_size_rw = container_sizes_rw.get(container.id, 0)
+            container_size_rfs = container_sizes_rfs.get(container.id, 0)
 
             # Check for privileged mode and device requests (for GPUs)
             privileged = container_detail['HostConfig'].get('Privileged', False)
@@ -146,6 +156,8 @@ class ContainersListView(APIView):
                 'ports': parse_ports(container.attrs['NetworkSettings']),
                 'privileged': privileged,
                 'nvdocker': nvdocker,
+                'size_raw': container_size_rw,
+                'size_fs': container_size_rfs,
             }
 
             container_data.append(container_info)
