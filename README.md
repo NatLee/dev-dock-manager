@@ -22,6 +22,8 @@ This project combines the following repositories:
 
     `docker-compose.yml` contains service of `nvidia-cuda` and it's used to check the host can run Nvidia docker or not.
 
+- NoVNC & SSH Support
+
 ## Nvidia Docker Support
 
 Nvidia Docker support is available under certain conditions.
