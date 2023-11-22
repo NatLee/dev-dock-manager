@@ -1,7 +1,7 @@
 
 function handleContainerAction(html_btn, cmd) {
     containerID = html_btn.dataset.id;
-    let url = '/dashboard/api/containers/start-stop-remove'
+    let url = '/dashboard/api/containers/control'
     let data = { 'id': containerID, 'cmd': cmd };
     //console.log(cmd + "->" + containerID);
 

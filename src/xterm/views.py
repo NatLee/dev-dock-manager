@@ -28,6 +28,7 @@ from xterm.schemas import count_param, free_ports_response, error_response
 from xterm.schemas import run_container_request_body, run_container_responses
 from xterm.schemas import check_port_params, check_port_in_used_response
 
+# GUI image tag name prefix
 GUI_IMAGE_TAG_NAME = 'gui-vnc'
 
 class Containers(APIView):
@@ -291,40 +292,43 @@ class RunContainerView(APIView):
 
 from xterm.consumers import send_notification_to_group
 
-@api_view(['POST'])
-def start_stop_remove(request):
-    cmd = request.data['cmd']
-    _id = request.data['id']
+class ContainersControl(APIView):
+    permission_classes = (IsAuthenticated,)
 
-    job = None
+    def post(self, request, *args, **kwargs):
 
-    if cmd == "start" or cmd == "restart" or cmd == "stop"  or cmd == "remove":
-        # ========================
-        # Send notification to group
-        message = {
-            "action": "WAITING",
-            "details": f"Waiting [{_id[:8]}] for the task to complete [{cmd}]",
-            "data": {
-                "container_id": _id,
-                "cmd": cmd,
+        cmd = request.data['cmd']
+        _id = request.data['id']
+
+        job = None
+
+        if cmd == "start" or cmd == "restart" or cmd == "stop"  or cmd == "remove":
+            # ========================
+            # Send notification to group
+            message = {
+                "action": "WAITING",
+                "details": f"Waiting [{_id[:8]}] for the task to complete [{cmd}]",
+                "data": {
+                    "container_id": _id,
+                    "cmd": cmd,
+                }
             }
-        }
-        send_notification_to_group(message)
-        # ========================
+            send_notification_to_group(message)
+            # ========================
 
-    if cmd == "start":
-        job = run_container_task.delay(_id)
-    elif cmd == "stop":
-        job = stop_container_task.delay(_id)
-    elif cmd == "remove":
-        job = remove_container_task.delay(_id)
-    elif cmd == "restart":
-        job = restart_container_task.delay(_id)
+        if cmd == "start":
+            job = run_container_task.delay(_id)
+        elif cmd == "stop":
+            job = stop_container_task.delay(_id)
+        elif cmd == "remove":
+            job = remove_container_task.delay(_id)
+        elif cmd == "restart":
+            job = restart_container_task.delay(_id)
 
-    if job:
-        job_id = job.id
-        return JsonResponse({"task_id": job_id})
+        if job:
+            job_id = job.id
+            return JsonResponse({"task_id": job_id})
 
-    return JsonResponse({"task_id": None})
+        return JsonResponse({"task_id": None})
 
 

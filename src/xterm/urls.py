@@ -11,7 +11,7 @@ urlpatterns = [
     path('containers', views.Containers.as_view(), name='containers'),
     path('api/containers', views.ContainersListView.as_view(), name='containers-api'),
     path('api/container/new', views.RunContainerView.as_view(), name='run-new-container'),
-    path('api/containers/start-stop-remove', views.start_stop_remove, name='start-stop-remove'),
+    path('api/containers/control', views.ContainersControl.as_view(), name='containers-control'),
 
     path('api/console/<str:action>/<str:id>', views.ConsoleView.as_view(), name='console'),
 
