@@ -22,6 +22,7 @@ from xterm.utils.parse_ports import parse_ports
 from xterm.utils.is_int import is_int
 from xterm.utils.find_multiple_free_ports import find_multiple_free_ports
 from xterm.utils.check_port_in_use import check_port_in_use
+from xterm.utils.is_port_used_by_container import is_port_used_by_container
 from xterm.utils.can_use_nvidia_docker import can_use_nvidia_docker
 
 from xterm.schemas import count_param, free_ports_response, error_response
@@ -98,8 +99,7 @@ class PortCheckAPIView(APIView):
         if port is None:
             return JsonResponse({'error': 'Port parameter is missing'}, status=400)
         try:
-            port = int(port)
-            is_used = check_port_in_use(port)
+            is_used = check_port_in_use(int(port)) or is_port_used_by_container(port)
             return JsonResponse({'port': port, 'is_used': is_used})
         except ValueError:
             return JsonResponse({'error': 'Invalid port value'}, status=400)
@@ -141,6 +141,9 @@ class ContainersListView(APIView):
             # Check for privileged mode and device requests (for GPUs)
             privileged = container_detail['HostConfig'].get('Privileged', False)
             device_requests:list = container_detail['HostConfig'].get('DeviceRequests', [])
+            
+            # Get port bindings
+            port_bindings:dict = container_detail['HostConfig'].get('PortBindings', {})
 
             nvdocker = False
             if device_requests:
@@ -153,7 +156,7 @@ class ContainersListView(APIView):
                 'command': container.attrs['Config']['Cmd'],
                 'short_id': container.short_id,
                 'image_tag': image_tag,
-                'ports': parse_ports(container.attrs['NetworkSettings']),
+                'ports': parse_ports(port_bindings),
                 'privileged': privileged,
                 'nvdocker': nvdocker,
                 'size_raw': container_size_rw,
@@ -250,11 +253,23 @@ class RunContainerView(APIView):
         except docker.errors.NotFound:
             pass
 
-
         ssh = request.data['ssh']
 
         if not all(is_int(val) for val in [ssh]):
             return Response({"error": "Non-integer value provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check the ssh port is used by other container port or not
+        if is_port_used_by_container(ssh):
+            return Response({
+                'error': f'Port [{ssh}] is already in use by container'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+
+        # Check the ssh port is not in use
+        if check_port_in_use(int(ssh)):
+            return Response({
+                'error': f'Port [{ssh}] is already in use by other services'
+            }, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.data['user']
         password = request.data['password']
