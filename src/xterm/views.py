@@ -100,7 +100,7 @@ class PortCheckAPIView(APIView):
             return JsonResponse({'error': 'Port parameter is missing'}, status=400)
         try:
             is_used = check_port_in_use(int(port)) or is_port_used_by_container(port)
-            return JsonResponse({'port': port, 'is_used': is_used})
+            return JsonResponse({'port': int(port), 'is_used': is_used})
         except ValueError:
             return JsonResponse({'error': 'Invalid port value'}, status=400)
 
