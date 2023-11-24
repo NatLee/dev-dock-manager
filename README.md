@@ -3,14 +3,14 @@
 # **Dev Dock Manager**
 
 <p style="text-align: center">
-  <img align="center" src="./doc/logo.png" alt="frame" width="30%" height="30%">
+  <img align="center" src="./doc/logo.png" alt="frame" width="20%" height="20%">
 </p>
 
 This is a Docker container manager developed using Django, providing isolated development environments with a suite of base functions and packages for each user on the same machine.
 
-</div>
-
 ![workflow](./doc/workflow.gif)
+
+</div>
 
 This project combines the following repositories:
 - [GUI-container-using-xfce-with-vnc](https://github.com/NatLee/GUI-container-using-xfce-with-vnc)
