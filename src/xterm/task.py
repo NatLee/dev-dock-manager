@@ -1,15 +1,17 @@
-import json
+import os
 
 import docker
 from django_rq import job
 
 from xterm.consumers import send_notification_to_group
 
+DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "d-gui-network")
+
 @job
 def run_image_task(image_name, ports, volumes, environment, name, privileged=False, nvdocker=False):
     client = docker.from_env()
     device_requests = []
-    network = client.networks.get('d-gui-network')
+    network = client.networks.get(DOCKER_NETWORK)
 
     if nvdocker:
         # Define device requests for NVIDIA GPUs
@@ -27,6 +29,7 @@ def run_image_task(image_name, ports, volumes, environment, name, privileged=Fal
         f"traefik.http.services.d-gui-{name}.loadbalancer.server.port": "6901",
         f"traefik.http.middlewares.d-gui-{name}-strip-prefix.stripprefix.prefixes": f"/novnc/{name}/",
         f"traefik.http.routers.d-gui-{name}.middlewares": f'd-gui-{name}-strip-prefix',
+        "traefik.docker.network": DOCKER_NETWORK,
     }
 
     container = client.containers.run(

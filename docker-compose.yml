@@ -18,6 +18,8 @@ services:
     image: d-gui-manager-web
     container_name: d-gui-manager-web
     entrypoint: /src/docker-entrypoint.sh
+    environment:
+      - DOCKER_NETWORK=d-gui-network
     volumes:
       - ./src:/src
       - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:rw
@@ -59,12 +61,13 @@ services:
     container_name: d-gui-proxy
     command:
       - --providers.docker
+      - --providers.docker.exposedByDefault=false
       - --entrypoints.web.address=:80
       - --api.dashboard=true
       - --api.insecure
       - --serverstransport.insecureskipverify=true
     ports:
-      - "8000:80"
+      - "8000:80" # Backend entrypoint
       - "8080:8080" # Traefik Dashboard
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
