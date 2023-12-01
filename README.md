@@ -13,8 +13,8 @@ This is a Docker container manager developed using Django, providing isolated de
 </div>
 
 This project combines the following repositories:
-- [GUI-container-using-xfce-with-vnc](https://github.com/NatLee/GUI-container-using-xfce-with-vnc)
-- [django-docker-gui](https://github.com/NatLee/django-docker-gui)
+- [Dev Dock](https://github.com/NatLee/dev-dock)
+- [Django Docker GUI](https://github.com/NatLee/django-docker-gui)
 
 ## Contains
 
