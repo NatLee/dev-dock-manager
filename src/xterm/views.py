@@ -285,6 +285,18 @@ class RunContainerView(APIView):
         if isinstance(nvdocker, str):
             nvdocker = nvdocker.lower() == 'true'
 
+
+        volumes = {}
+        # Find host OS
+        info = client.info()
+        host_os_type = info.get('OSType', 'Unknown')
+        if host_os_type == 'linux':
+            # notice: docker in docker but using host path
+            # { host_location: {bind: container_location, mode: access_mode}}
+
+            # mount host time zone to container
+            volumes['/etc/localtime'] = {'bind': '/etc/localtime', 'mode': 'ro'}
+
         # Call the task function with the form inputs
         job = run_image_task.delay(
             image_name=GUI_IMAGE_TAG_NAME,
@@ -294,13 +306,7 @@ class RunContainerView(APIView):
                 # '6901/tcp': novnc, # already use traefik to proxy the URL
                 '22/tcp': ssh,
             },
-            volumes={
-                # notice: docker in docker but using host path
-                # { host_location: {bind: container_location, mode: access_mode}}
-                '/etc/localtime': {'bind': '/etc/localtime', 'mode': 'ro'},
-                # need to use absolute path
-                #f'/home/hdre/docker-django-ui/homes/{container_name}': {'bind': '/root/Desktop', 'mode': 'rw'},
-            },
+            volumes=volumes,
             environment={
                 'VNC_PW': vnc_password,
                 'VNC_RESOLUTION': '1600x900',
