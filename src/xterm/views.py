@@ -24,6 +24,7 @@ from xterm.utils.find_multiple_free_ports import find_multiple_free_ports
 from xterm.utils.check_port_in_use import check_port_in_use
 from xterm.utils.is_port_used_by_container import is_port_used_by_container
 from xterm.utils.can_use_nvidia_docker import can_use_nvidia_docker
+from xterm.utils.is_linux import is_linux
 
 from xterm.schemas import count_param, free_ports_response, error_response
 from xterm.schemas import run_container_request_body, run_container_responses
@@ -59,6 +60,20 @@ class NvidiaDockerCheckAPIView(APIView):
                 {'nvidia_docker_available': False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
+class LinuxCheckAPIView(APIView):
+    """
+    API View to check if the host OS is Linux.
+    """
+
+    def get(self, request, *args, **kwargs):
+        if is_linux():
+            return Response(
+                {'is_linux': True}
+            )
+        else:
+            return Response(
+                {'is_linux': False}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
 
 class FreePortsAPIView(APIView):
     permission_classes = [AllowAny]
@@ -287,10 +302,7 @@ class RunContainerView(APIView):
 
 
         volumes = {}
-        # Find host OS
-        info = client.info()
-        host_os_type = info.get('OSType', 'Unknown')
-        if host_os_type == 'linux':
+        if is_linux():
             # notice: docker in docker but using host path
             # { host_location: {bind: container_location, mode: access_mode}}
 

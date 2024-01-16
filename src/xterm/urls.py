@@ -21,6 +21,6 @@ urlpatterns = [
     path('api/ports', views.FreePortsAPIView.as_view(), name='free-ports'),
     path('api/ports/check', views.PortCheckAPIView.as_view(), name='check-port'),
     path('api/nvdocker/check', views.NvidiaDockerCheckAPIView.as_view(), name='check-nvdocker'),
-
+    path('api/linux/check', views.LinuxCheckAPIView.as_view(), name='check-linux'),
 
 ]
