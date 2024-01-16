@@ -6,7 +6,7 @@
   <img align="center" src="./doc/logo.png" alt="frame" width="20%" height="20%">
 </p>
 
-This is a Docker container manager developed using Django, providing isolated development environments with a suite of base functions and packages for each user on the same machine.
+This is a SAAS tool for managing docker containers with GUI developed using Django, providing isolated development environments with a suite of base functions and packages for each user on the same machine.
 
 ![workflow](./doc/workflow.gif)
 
