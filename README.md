@@ -42,7 +42,7 @@ This feature is optional and can be enabled during container creation if your sy
 
 # Usage
 
-> Only support x86/64 machine.
+> Only support x86/64 linux machine.
 
 Notice that you need to clone the submodule at the first.
 
