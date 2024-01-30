@@ -44,6 +44,8 @@ This feature is optional and can be enabled during container creation if your sy
 
 > Only support x86/64 linux-based machine.
 
+> In Windows, you need to use Docker in WSL.
+
 Notice that you need to clone the submodule at the first.
 
 ```
