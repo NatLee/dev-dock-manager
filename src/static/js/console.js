@@ -48,8 +48,9 @@ async function loadConsoleData(containerID, action) {
 function setupWebSocketConnection(containerID, action){
     Terminal.applyAddon(fit);
 
+    const accessToken = localStorage.getItem('accessToken');
     var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
-    var ws_path = ws_scheme + '://' + window.location.host + "/ws/console/";
+    var ws_path = ws_scheme + '://' + window.location.host + `/ws/console/?token=${accessToken}`;
     var socket = new WebSocket(ws_path);
 
     // Convert and send a message to the server
@@ -94,7 +95,7 @@ function setupWebSocketConnection(containerID, action){
         console.log("WebSocket connection established");
         // Handle the connect event
         status.innerHTML = '<span style="background-color: lightgreen;">connected</span>';
-        // Here we assume `action` and `containerID` are defined elsewhere in your script
+        // Send the container ID to the server
         sendWebSocketMessage(action, { "Id": containerID });
         term.focus();
     };
