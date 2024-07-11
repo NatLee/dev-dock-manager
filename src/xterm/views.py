@@ -139,6 +139,9 @@ class ContainersListView(APIView):
             if image_tags:
                 image_tag = image_tags[0]
 
+            if image_tag is None:
+                continue
+
             if image_tag and image_tag.split(':')[0] != GUI_IMAGE_TAG_NAME:
                 # only select containers with name starting with `gui-d`
                 continue
