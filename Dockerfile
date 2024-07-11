@@ -1,13 +1,19 @@
-FROM python:3.9.18-slim-bullseye
+FROM python:3.11.9-slim-bullseye
 
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONUNBUFFERED=1
 
 WORKDIR /src
-COPY requirements.txt /src
-RUN pip install -r requirements.txt
-COPY ./src /src
 
 RUN apt-get update
+
+# Install dependencies
+COPY requirements.txt /src
+RUN python -m pip install --upgrade pip
+RUN pip install --upgrade setuptools
+RUN pip install -r requirements.txt
+
+# Copy source code
+COPY ./src /src
 
 EXPOSE 80
 
