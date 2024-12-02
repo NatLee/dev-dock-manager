@@ -42,7 +42,7 @@ This feature is optional and can be enabled during container creation if your sy
 
 # Usage
 
-> Only support x86/64 linux-based machine.
+> Only support Linux-based machine because it uses Docker socket to interact with Docker daemon.
 
 > In Windows, you need to use Docker in WSL.
 
