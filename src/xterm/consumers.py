@@ -204,7 +204,12 @@ class ConsoleConsumer(AsyncWebsocketConsumer):
         session_data = await sync_to_async(self.scope["session"].load)()
         container_id = session_data.get('id')
         exec_id = session_data.get('exec_id')
-        
+
+        # Only allow resize for shell sessions (where exec_id exists)
+        if not exec_id:
+            logger.warning("Resize attempted for attach session - ignoring")
+            return
+
         # Get Docker client
         client = docker.APIClient()
         
