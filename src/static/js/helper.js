@@ -1,4 +1,8 @@
 
+// ============================
+// Utility Functions
+// ============================
+
 async function verifyAccessToken() {
    const accessToken = localStorage.getItem('accessToken');
    if (!accessToken) {
@@ -48,7 +52,17 @@ function createToastAlert(msg, isFailure) {
    }, 2000);
 }
 
-
+function debounce(func, wait) {
+   let timeout;
+   return function executedFunction(...args) {
+       const later = () => {
+           clearTimeout(timeout);
+           func(...args);
+       };
+       clearTimeout(timeout);
+       timeout = setTimeout(later, wait);
+   };
+}
 
 // ---------------------------------------
 // check token on page load
