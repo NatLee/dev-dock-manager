@@ -58,6 +58,8 @@ git submodule update --init --recursive
 
 1. Build GUI container.
 
+> Or you can pull from Docker Hub with [natlee/gui-vnc](https://hub.docker.com/r/natlee/gui-vnc).
+
 ```
 cd gui && docker-compose build
 ```
