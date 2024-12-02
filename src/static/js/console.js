@@ -218,6 +218,14 @@ function handleTerminalResize() {
 // Main
 // ============================
 
+
+$(document).ready(function () {
+    // Initial adjustment
+    handleTerminalResize();
+    // Listen for window resize events
+    window.addEventListener('resize', handleTerminalResize);
+});
+
 const { action, containerID } = getPathSegments();
 
 console.log(`Container ID:` + containerID);
