@@ -42,7 +42,7 @@ This feature is optional and can be enabled during container creation if your sy
 
 # Usage
 
-> Only support x86/64 linux-based machine.
+> Only support Linux-based machine because it uses Docker socket to interact with Docker daemon.
 
 > In Windows, you need to use Docker in WSL.
 
@@ -57,6 +57,8 @@ git submodule update --init --recursive
 > Docker daemon must be running.
 
 1. Build GUI container.
+
+> Or you can pull from Docker Hub with [natlee/gui-vnc](https://hub.docker.com/r/natlee/gui-vnc).
 
 ```
 cd gui && docker-compose build

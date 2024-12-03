@@ -1,4 +1,8 @@
 
+// ============================
+// Utility Functions
+// ============================
+
 function getDisplayValue(value, defaultValue = 'N/A') {
     return value ? value : defaultValue;
 }
@@ -16,6 +20,26 @@ const showError = (error) => {
         }
     });
 };
+
+function getPathSegments() {
+    // This function assumes the pathname follows a specific pattern, e.g., "/dashboard/api/action/containerID"
+    const segments = window.location.pathname.split('/').filter(Boolean);
+
+    // Additional checks can be added here to ensure that segments[1] and segments[2] exist
+    if (segments.length < 4) {
+        console.error('Unexpected pathname format:', window.location.pathname);
+        return { action: null, containerID: null };
+    }
+
+    return {
+        action: segments[2],
+        containerID: segments[3],
+    };
+}
+
+// ============================
+// Fetch and Display Data
+// ============================
 
 async function loadConsoleData(containerID, action) {
     try {
@@ -44,9 +68,20 @@ async function loadConsoleData(containerID, action) {
     }
 }
 
+// ============================
+// WebSocket Connection
+// ============================
+function sendWebSocketMessage(action, payload) {
+    if (window.socket.readyState !== WebSocket.OPEN) {
+        console.error('WebSocket is not open');
+        return;
+    }
+    window.socket.send(JSON.stringify({ action: action, payload: payload }));
+}
 
 function setupWebSocketConnection(containerID, action){
     Terminal.applyAddon(fit);
+    Terminal.applyAddon(fullscreen);
 
     const accessToken = localStorage.getItem('accessToken');
     var ws_scheme = window.location.protocol == "https:" ? "wss" : "ws";
@@ -58,18 +93,19 @@ function setupWebSocketConnection(containerID, action){
     const ticket = `container.${`${containerID}`}`;
     const socket = new WebSocket(ws_path, [tokenInfo, ticket]);
 
-
-    // Convert and send a message to the server
-    function sendWebSocketMessage(action, message) {
-        socket.send(JSON.stringify({ action: action, payload: message }));
-    }
-
+    // Expose the socket object to the window
+    window.socket = socket;
     
     const status = document.getElementById("status")
 
     var term = new Terminal({
         cursorBlink: true,
+        fontSize: 14,
+        fontFamily: 'Menlo, Monaco, "Courier New", monospace',
     });
+
+    // Expose the terminal object to the window
+    window.term = term;
 
     term.open(document.getElementById('terminal'));
 
@@ -104,6 +140,8 @@ function setupWebSocketConnection(containerID, action){
         // Send the container ID to the server
         sendWebSocketMessage(action, { "Id": containerID });
         term.focus();
+        // Fit terminal again after connection is established
+        handleTerminalResize();
     };
 
     socket.onclose = function (event) {
@@ -114,6 +152,14 @@ function setupWebSocketConnection(containerID, action){
             console.log('Connection died');
         }
         status.innerHTML = '<span style="background-color: #ff8383;">disconnected</span>';
+        // Add visual indication that terminal is disconnected
+        term.write('\r\n\n[Connection closed]\r\n');
+        term.setOption('cursorBlink', false); // Stop cursor from blinking
+        term.setOption('disableStdin', true); // Disable input
+        term.setOption('theme', {
+            background: '#1e1e1e',
+            foreground: '#707070',
+        });
     };
 
     socket.onerror = function (event) {
@@ -122,21 +168,63 @@ function setupWebSocketConnection(containerID, action){
 
 }
 
-function getPathSegments() {
-    // This function assumes the pathname follows a specific pattern, e.g., "/dashboard/api/action/containerID"
-    const segments = window.location.pathname.split('/').filter(Boolean);
+// ============================
+// Terminal Actions
+// ============================
 
-    // Additional checks can be added here to ensure that segments[1] and segments[2] exist
-    if (segments.length < 4) {
-        console.error('Unexpected pathname format:', window.location.pathname);
-        return { action: null, containerID: null };
+const resizeTerminal = debounce((cols, rows) => {
+    const termElement = document.querySelector('.terminal');
+    if (!termElement) return;
+    const height = termElement.offsetHeight;
+    const width = termElement.offsetWidth;
+    sendWebSocketMessage("pty_resize", { 
+        size: {
+            rows: rows,
+            cols: cols,
+            height: height,
+            width: width
+        }
+    });
+    console.log(`Resized terminal to ${cols} cols and ${rows} rows`);
+}, 250); // 250ms 的延遲
+
+
+function adjustTerminalHeight(viewportHeight) {
+    const terminalWrapper = document.querySelector('.terminal-wrapper');
+    const navbarHeight = document.querySelector('nav').offsetHeight;
+    
+    // 計算 terminal 可用的高度
+    let availableHeight = viewportHeight - navbarHeight - 40; // 40px for margin
+    
+    // 設定 terminal wrapper 的高度
+    terminalWrapper.style.height = `${availableHeight}px`;
+    
+    // 調整 terminal 大小
+    if (window.term) {
+        window.term.fit();
+        const dimensions = window.term.proposeGeometry();
+        if (dimensions) {
+            resizeTerminal(dimensions.cols, dimensions.rows);
+        }
     }
-
-    return {
-        action: segments[2],
-        containerID: segments[3],
-    };
 }
+
+function handleTerminalResize() {
+    const currentWindowHeight = window.innerHeight;
+    adjustTerminalHeight(currentWindowHeight);
+}
+
+// ============================
+// Main
+// ============================
+
+
+$(document).ready(function () {
+    // Initial adjustment
+    handleTerminalResize();
+    // Listen for window resize events
+    window.addEventListener('resize', handleTerminalResize);
+});
 
 const { action, containerID } = getPathSegments();
 

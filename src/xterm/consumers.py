@@ -3,6 +3,9 @@ import json
 import asyncio
 import select
 import base64
+import fcntl
+import struct
+import termios
 
 import docker
 
@@ -127,6 +130,9 @@ class ConsoleConsumer(AsyncWebsocketConsumer):
         elif action == 'pty_input':
             # Send input to the container
             await self.pty_input(payload)
+        elif action == 'pty_resize':
+            # Handle resize action
+            await self.pty_resize(payload)
 
     async def start_shell(self, container_id):
         client = docker.APIClient()
@@ -185,6 +191,34 @@ class ConsoleConsumer(AsyncWebsocketConsumer):
         exec_id = session_data.get('exec_id')
         # Send the input to the docker socket
         await sync_to_async(self.docker_socket._sock.send)(payload["input"].encode())
+
+    async def pty_resize(self, payload):
+
+        pty_size = payload.get('size', {})
+        # Validate pty_size
+        if not pty_size.get('rows') or not pty_size.get('cols'):
+            logger.error("Invalid pty_size")
+            return
+
+        # Get container info from session 
+        session_data = await sync_to_async(self.scope["session"].load)()
+        container_id = session_data.get('id')
+        exec_id = session_data.get('exec_id')
+
+        # Only allow resize for shell sessions (where exec_id exists)
+        if not exec_id:
+            logger.warning("Resize attempted for attach session - ignoring")
+            return
+
+        # Get Docker client
+        client = docker.APIClient()
+        
+        try:
+            height = pty_size.get('rows', 24)
+            width = pty_size.get('cols', 80)
+            client.exec_resize(exec_id, height=height, width=width)
+        except docker.errors.APIError as e:
+            logger.error(f"Failed to resize tty: {e}")
 
     def get_container_status(self, container_id):
         client = docker.APIClient()
