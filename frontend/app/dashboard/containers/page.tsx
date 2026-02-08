@@ -7,6 +7,7 @@ import { useContainers } from "@/hooks/useContainers";
 import { useNotificationsWs } from "@/hooks/useNotificationsWs";
 import { ContainerTable } from "@/components/containers/ContainerTable";
 import { ContainerDetailsModal } from "@/components/containers/ContainerDetailsModal";
+import { ImagesSection } from "@/components/containers/ImagesSection";
 import { NewContainerModal } from "@/components/containers/NewContainerModal";
 
 export default function ContainersPage() {
@@ -44,23 +45,22 @@ export default function ContainersPage() {
 
   return (
     <div className="mx-5">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-semibold text-text">
-            Development GUI Containers
-          </h2>
+      <ImagesSection />
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-semibold text-text">
+          Containers
+        </h2>
+        <div className="flex items-center gap-2">
           <span
-            className="flex items-center gap-1.5 text-sm font-medium text-text-muted"
-            title={wsConnected ? "Connected" : "Disconnected, reconnecting..."}
+            className="flex items-center gap-1.5 rounded-lg border border-border bg-surface/50 px-2.5 py-1.5 text-sm text-text-muted"
+            title={wsConnected ? "WebSocket connected" : "Disconnected, reconnecting…"}
           >
             <span
-              className={`h-2 w-2 rounded-full ${wsConnected ? "bg-success" : "bg-warning"}`}
+              className={`h-2 w-2 shrink-0 rounded-full ${wsConnected ? "bg-success" : "bg-warning"}`}
               aria-hidden
             />
             {wsConnected ? "Connected" : "Disconnected"}
           </span>
-        </div>
-        <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setNewModalOpen(true)}
@@ -81,28 +81,32 @@ export default function ContainersPage() {
         <p className="mb-2 text-sm text-error">{error}</p>
       )}
       {loading ? (
-        <p className="text-text-muted">Loading containers...</p>
-      ) : containers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface/50 py-16 px-6 text-center">
-          <p className="mb-1 text-lg font-medium text-text">尚無任何容器</p>
-          <p className="mb-4 text-sm text-text-muted">
-            點擊下方按鈕建立您的第一個開發環境容器。
-          </p>
-          <button
-            type="button"
-            onClick={() => setNewModalOpen(true)}
-            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-          >
-            建立容器
-          </button>
+        <div className="rounded-xl border border-border bg-surface/30 px-4 py-8 text-center text-sm text-text-muted">
+          Loading containers…
         </div>
       ) : (
-        <ContainerTable
-          containers={containers}
-          onControl={handleControl}
-          waitingIds={waitingIds}
-          onContainerClick={setDetailsContainer}
-        />
+        containers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface/50 py-16 px-6 text-center">
+            <p className="mb-1 text-lg font-medium text-text">No containers yet</p>
+            <p className="mb-4 text-sm text-text-muted">
+              Click the button below to create your first dev environment container.
+            </p>
+            <button
+              type="button"
+              onClick={() => setNewModalOpen(true)}
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+            >
+              Create container
+            </button>
+          </div>
+        ) : (
+          <ContainerTable
+            containers={containers}
+            onControl={handleControl}
+            waitingIds={waitingIds}
+            onContainerClick={setDetailsContainer}
+          />
+        )
       )}
       <ContainerDetailsModal
         container={detailsContainer}

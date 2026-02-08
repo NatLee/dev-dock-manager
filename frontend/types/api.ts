@@ -17,6 +17,8 @@ export interface Image {
   name: string | null;
   short_id: string;
   size: number;
+  /** All tags for this image that match DOCKER_IMAGE_NAME (e.g. multiple versions) */
+  tags?: string[];
 }
 
 export interface ConsoleInfo {
