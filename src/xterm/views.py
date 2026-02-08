@@ -1,5 +1,5 @@
 import docker
-import django_rq
+import os
 
 from django.http import JsonResponse
 
@@ -30,7 +30,7 @@ from xterm.schemas import run_container_request_body, run_container_responses
 from xterm.schemas import check_port_params, check_port_in_used_response
 
 # GUI image tag name prefix
-GUI_IMAGE_TAG_NAME = 'gui-vnc'
+GUI_IMAGE_TAG_NAME = os.environ.get("DOCKER_IMAGE_NAME", "gui-vnc")
 
 
 class NvidiaDockerCheckAPIView(APIView):
@@ -184,15 +184,20 @@ class ImagesListView(APIView):
         client = docker.from_env()
         images = client.images.list()
 
-        # Serialize the image data
+        # Serialize the image data; only include images matching DOCKER_IMAGE_NAME (e.g. gui-vnc)
         image_data = []
         for image in images:
-            name = image.tags[0] if image.tags else None
+            if not image.tags:
+                continue
+            matching_tags = [t for t in image.tags if GUI_IMAGE_TAG_NAME in t]
+            if not matching_tags:
+                continue
             image_info = {
                 'id': image.id[7:],
-                'size': round(image.attrs['Size']/1048576, 2),
+                'size': round(image.attrs['Size'] / 1048576, 2),
                 'short_id': image.short_id[7:],
-                'name': name
+                'name': matching_tags[0],
+                'tags': matching_tags,
             }
             image_data.append(image_info)
 
