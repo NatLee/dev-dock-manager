@@ -25,23 +25,30 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:rw # to access the host docker daemon
     labels:
       - "traefik.enable=true"
-      # Define router for /
-      - "traefik.http.routers.backend-root.rule=Path(`/`)"
-      - "traefik.http.routers.backend-root.service=backend-service"
-      # Define router for /login
-      - "traefik.http.routers.backend-login.rule=PathPrefix(`/login`)"
-      - "traefik.http.routers.backend-login.service=backend-service"
-      # Define router for /dashboard
-      - "traefik.http.routers.backend-dashboard.rule=PathPrefix(`/dashboard`)"
-      - "traefik.http.routers.backend-dashboard.service=backend-service"
-      # Define router for /api
       - "traefik.http.routers.backend-api.rule=PathPrefix(`/api`)"
       - "traefik.http.routers.backend-api.service=backend-service"
-      # Define router for websocket
+      - "traefik.http.routers.backend-api.priority=10"
+      - "traefik.http.routers.backend-dashboard-api.rule=PathPrefix(`/dashboard/api`)"
+      - "traefik.http.routers.backend-dashboard-api.service=backend-service"
+      - "traefik.http.routers.backend-dashboard-api.priority=10"
       - "traefik.http.routers.backend-websocket.rule=PathPrefix(`/ws`)"
       - "traefik.http.routers.backend-websocket.service=backend-service"
-      # Define the service
+      - "traefik.http.routers.backend-websocket.priority=10"
       - "traefik.http.services.backend-service.loadbalancer.server.port=8000"
+
+  frontend:
+    <<: [*common-networks]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: d-gui-manager-frontend
+    container_name: d-gui-manager-frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`) && !PathRegexp(`^/novnc`)"
+      - "traefik.http.routers.frontend.service=frontend-service"
+      - "traefik.http.routers.frontend.priority=1"
+      - "traefik.http.services.frontend-service.loadbalancer.server.port=3000"
 
   redis:
     <<: [*common-networks]
@@ -61,6 +68,8 @@ services:
     command:
       - --providers.docker
       - --providers.docker.exposedByDefault=false
+      - --providers.docker.network=d-gui-network
+      - --providers.docker.watch=true
       - --entrypoints.web.address=:80
       - --api.dashboard=true
       - --api.insecure
@@ -69,7 +78,7 @@ services:
       - "8000:80" # Backend entrypoint
       - "8080:8080" # Traefik Dashboard
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 
 networks:
   d-gui-network:
