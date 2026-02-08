@@ -19,10 +19,11 @@ services:
     entrypoint: /src/docker-entrypoint.sh
     environment:
       - DOCKER_NETWORK=d-gui-network
+      - DOCKER_IMAGE_NAME=gui-vnc
     volumes:
       - ./src:/src # backend source code for hot reloading
       - ./supervisord.conf:/etc/supervisor/conf.d/supervisord.conf:rw # supervisord config
-      - /var/run/docker.sock:/var/run/docker.sock:ro # to access the host docker daemon
+      - /var/run/docker.sock:/var/run/docker.sock:rw # to access the host docker daemon
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend-api.rule=PathPrefix(`/api`)"
