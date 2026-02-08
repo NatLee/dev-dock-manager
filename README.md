@@ -32,6 +32,8 @@ This project combines the following repositories:
 
 - NoVNC & SSH Support
 
+  **Note:** Containers created before the Traefik/NoVNC routing update do not have the required labels. The dashboard shows "NoVNC (recreate to enable)" for those. Remove and create a new container (with the same settings) to use NoVNC.
+
 ## Nvidia Docker Support
 
 Nvidia Docker support is available under certain conditions.
@@ -46,7 +48,7 @@ This feature is optional and can be enabled during container creation if your sy
 
 > In Windows, you need to use Docker in WSL.
 
-Notice that you need to clone the submodule at the first.
+Notice that you need to clone the submodule at the first. The submodule is the GUI container image from [dev-dock](https://github.com/NatLee/dev-dock).
 
 ```
 git submodule update --init --recursive
