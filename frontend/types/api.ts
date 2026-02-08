@@ -10,8 +10,6 @@ export interface Container {
   nvdocker: boolean;
   size_raw: number;
   size_fs: number;
-  /** True if container has Traefik labels for NoVNC (created after routing update). */
-  novnc_ready?: boolean;
 }
 
 export interface Image {

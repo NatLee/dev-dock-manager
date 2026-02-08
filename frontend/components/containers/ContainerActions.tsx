@@ -32,29 +32,18 @@ export function ContainerActions({
     );
   }
 
-  const novncReady = container.novnc_ready !== false;
-
   return (
     <div className="flex flex-wrap gap-2">
       {running ? (
         <>
-          {novncReady ? (
-            <a
-              href={isSameOrigin ? novncPath : `${origin}${novncPath}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-xl bg-primary px-2 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            >
-              NoVNC
-            </a>
-          ) : (
-            <span
-              title="Recreate this container to enable NoVNC (container was created before routing update)"
-              className="cursor-help rounded-xl bg-slate-200 px-2 py-1 text-sm font-medium text-slate-600 dark:bg-slate-600 dark:text-slate-300"
-            >
-              NoVNC (recreate to enable)
-            </span>
-          )}
+          <a
+            href={isSameOrigin ? novncPath : `${origin}${novncPath}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl bg-primary px-2 py-1 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            NoVNC
+          </a>
           <Link
             href={`/dashboard/console/shell/${container.id}`}
             target="_blank"
