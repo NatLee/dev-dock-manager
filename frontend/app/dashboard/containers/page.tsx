@@ -2,15 +2,18 @@
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import type { Container } from "@/types/api";
 import { useContainers } from "@/hooks/useContainers";
 import { useNotificationsWs } from "@/hooks/useNotificationsWs";
 import { ContainerTable } from "@/components/containers/ContainerTable";
+import { ContainerDetailsModal } from "@/components/containers/ContainerDetailsModal";
 import { NewContainerModal } from "@/components/containers/NewContainerModal";
 
 export default function ContainersPage() {
   const { containers, loading, error, refetch, control } = useContainers();
   const [waitingIds, setWaitingIds] = useState<Set<string>>(new Set());
   const [newModalOpen, setNewModalOpen] = useState(false);
+  const [detailsContainer, setDetailsContainer] = useState<Container | null>(null);
 
   const onWaiting = useCallback((containerId: string) => {
     setWaitingIds((prev) => new Set(prev).add(containerId));
@@ -79,13 +82,32 @@ export default function ContainersPage() {
       )}
       {loading ? (
         <p className="text-text-muted">Loading containers...</p>
+      ) : containers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface/50 py-16 px-6 text-center">
+          <p className="mb-1 text-lg font-medium text-text">尚無任何容器</p>
+          <p className="mb-4 text-sm text-text-muted">
+            點擊下方按鈕建立您的第一個開發環境容器。
+          </p>
+          <button
+            type="button"
+            onClick={() => setNewModalOpen(true)}
+            className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          >
+            建立容器
+          </button>
+        </div>
       ) : (
         <ContainerTable
           containers={containers}
           onControl={handleControl}
           waitingIds={waitingIds}
+          onContainerClick={setDetailsContainer}
         />
       )}
+      <ContainerDetailsModal
+        container={detailsContainer}
+        onClose={() => setDetailsContainer(null)}
+      />
       <NewContainerModal
         open={newModalOpen}
         onClose={() => setNewModalOpen(false)}

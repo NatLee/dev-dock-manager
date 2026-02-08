@@ -7,12 +7,14 @@ type Props = {
   containers: Container[];
   onControl: (id: string, cmd: "start" | "stop" | "restart" | "remove") => void;
   waitingIds?: Set<string>;
+  onContainerClick?: (container: Container) => void;
 };
 
 export function ContainerTable({
   containers,
   onControl,
   waitingIds = new Set(),
+  onContainerClick,
 }: Props) {
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-background shadow-sm">
@@ -49,7 +51,20 @@ export function ContainerTable({
             return (
               <tr
                 key={item.id}
-                className="bg-background even:bg-surface/50 transition-colors hover:bg-surface"
+                role={onContainerClick ? "button" : undefined}
+                tabIndex={onContainerClick ? 0 : undefined}
+                onClick={onContainerClick ? () => onContainerClick(item) : undefined}
+                onKeyDown={
+                  onContainerClick
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onContainerClick(item);
+                        }
+                      }
+                    : undefined
+                }
+                className={`bg-background even:bg-surface/50 transition-colors hover:bg-surface ${onContainerClick ? "cursor-pointer" : ""}`}
               >
                 <td className="px-4 py-3 font-mono text-sm text-text">
                   {item.short_id}
@@ -82,7 +97,11 @@ export function ContainerTable({
                     {item.status}
                   </span>
                 </td>
-                <td className="px-4 py-3" id={`actions-${item.id}`}>
+                <td
+                  className="px-4 py-3"
+                  id={`actions-${item.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <ContainerActions
                     container={item}
                     onControl={onControl}
