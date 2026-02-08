@@ -32,8 +32,6 @@ This project combines the following repositories:
 
 - NoVNC & SSH Support
 
-  **Note:** Containers created before the Traefik/NoVNC routing update do not have the required labels. The dashboard shows "NoVNC (recreate to enable)" for those. Remove and create a new container (with the same settings) to use NoVNC.
-
 ## Nvidia Docker Support
 
 Nvidia Docker support is available under certain conditions.
