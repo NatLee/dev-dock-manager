@@ -155,11 +155,6 @@ class ContainersListView(APIView):
             if device_requests:
                 nvdocker = any(req.get('Driver', '') == 'nvidia' for req in device_requests)
 
-            labels = container_detail.get('Config', {}).get('Labels', {}) or {}
-            novnc_ready = any(
-                k.startswith('traefik.http.routers.d-gui-') for k in labels
-            )
-
             container_info = {
                 'id': container.id,
                 'name': container.name,
@@ -172,7 +167,6 @@ class ContainersListView(APIView):
                 'nvdocker': nvdocker,
                 'size_raw': container_size_rw,
                 'size_fs': container_size_rfs,
-                'novnc_ready': novnc_ready,
             }
 
             container_data.append(container_info)
