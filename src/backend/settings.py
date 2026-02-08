@@ -196,10 +196,7 @@ APPEND_SLASH = False
 
 STATIC_URL = "api/__hidden_statics/"
 STATIC_ROOT = "staticfiles"
-STATICFILES_DIRS = [
-    BASE_DIR / "static",
-    # other folders containing static files
-]
+STATICFILES_DIRS = []
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

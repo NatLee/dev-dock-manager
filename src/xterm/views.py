@@ -1,7 +1,6 @@
 import docker
 import django_rq
 
-from django.shortcuts import render, redirect
 from django.http import JsonResponse
 
 from rest_framework.views import APIView
@@ -33,17 +32,6 @@ from xterm.schemas import check_port_params, check_port_in_used_response
 # GUI image tag name prefix
 GUI_IMAGE_TAG_NAME = 'gui-vnc'
 
-class Containers(APIView):
-    permission_classes = (AllowAny,)
-    swagger_schema = None
-    def get(self, request):
-        return render(request, 'containers.html')
-
-class Console(APIView):
-    permission_classes = (AllowAny,)
-    swagger_schema = None
-    def get(self, request, id):
-        return render(request, 'console.html')
 
 class NvidiaDockerCheckAPIView(APIView):
     """
@@ -167,6 +155,11 @@ class ContainersListView(APIView):
             if device_requests:
                 nvdocker = any(req.get('Driver', '') == 'nvidia' for req in device_requests)
 
+            labels = container_detail.get('Config', {}).get('Labels', {}) or {}
+            novnc_ready = any(
+                k.startswith('traefik.http.routers.d-gui-') for k in labels
+            )
+
             container_info = {
                 'id': container.id,
                 'name': container.name,
@@ -179,6 +172,7 @@ class ContainersListView(APIView):
                 'nvdocker': nvdocker,
                 'size_raw': container_size_rw,
                 'size_fs': container_size_rfs,
+                'novnc_ready': novnc_ready,
             }
 
             container_data.append(container_info)

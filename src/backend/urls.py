@@ -46,9 +46,7 @@ urlpatterns += [
     path(f"{API_URL_PREFIX}/auth/google/", include("custom_auth.urls")),
     # auth
     path(f"{API_URL_PREFIX}/auth/", include("custom_jwt.urls")),
-    # login
-    path("", include("login.urls"), name="entry"),
-    # xterm
+    # xterm (API and WebSocket only; frontend is Next.js)
     path(f"{MAIN_URL_PREFIX}/", include("xterm.urls"), name="xterm"),
 ]
 

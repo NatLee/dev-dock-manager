@@ -26,6 +26,8 @@ def run_image_task(image_name, ports, volumes, environment, name, privileged=Fal
     traefik_labels = {
         "traefik.enable": "true",
         f"traefik.http.routers.d-gui-{name}.rule": f"PathPrefix(`/novnc/{name}/`)",
+        f"traefik.http.routers.d-gui-{name}.priority": "5",
+        f"traefik.http.routers.d-gui-{name}.entrypoints": "web",
         f"traefik.http.services.d-gui-{name}.loadbalancer.server.port": "6901",
         f"traefik.http.middlewares.d-gui-{name}-strip-prefix.stripprefix.prefixes": f"/novnc/{name}/",
         f"traefik.http.routers.d-gui-{name}.middlewares": f'd-gui-{name}-strip-prefix',
