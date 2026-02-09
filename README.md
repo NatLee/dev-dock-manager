@@ -3,7 +3,7 @@
 # **Dev Dock Manager**
 
 <p style="text-align: center">
-  <img align="center" src="./doc/login.gif" alt="frame" width="20%" height="20%">
+  <img align="center" src="./doc/login.gif" alt="frame">
 </p>
 
 This is a SAAS tool for managing docker containers with GUI developed using Django, providing isolated development environments with a suite of base functions and packages for each user on the same machine.
