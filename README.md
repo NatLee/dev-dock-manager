@@ -45,15 +45,17 @@ is in the [Rust README](https://github.com/NatLee/dev-dock-manager-rust#why-this
 | Measured (median) | dev-dock-manager (this repo) | dev-dock-manager-rust |
 |---|---|---|
 | Backend image size | 687 MB | 144 MB |
-| Backend memory when idle | 256 MiB | 5.0 MiB |
-| Start-up (`docker start` → API answers) | 8.3 s | 0.58 s |
-| Log in | 129 ms | 18 ms |
-| Container list | 3,185 ms | 478 ms |
-| Image list | 4,973 ms | 324 ms |
+| Backend memory when idle | 175 MiB | 5.5 MiB |
+| Start-up (`docker start` → API answers) | 18.6 s | 3.0 s |
+| Log in | 223 ms | 44 ms |
+| Container list | 593 ms | 485 ms |
+| Image list | 224 ms | 143 ms |
 
-The slow list endpoints come from docker-py: it inspects every image one by one, and the container list
-also asks Docker for disk usage. Start-up includes applying migrations, collecting static files and
-`runserver` with its auto-reloader.
+The machine was busy with other work while measuring, so compare the columns with each other rather than
+with an idle machine. Start-up includes applying migrations and collecting static files before Daphne
+starts. The two lists used to take 8.4 s and 13.5 s on the same machine, because docker-py inspected every
+container and image on the Docker host and the container list also asked Docker for its disk usage; now
+they make one list call and inspect only the desktops you may see.
 
 | | dev-dock-manager | dev-dock-manager-rust |
 |---|---|---|
