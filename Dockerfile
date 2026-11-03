@@ -9,8 +9,6 @@ RUN apt-get update
 # Install dependencies
 COPY requirements.txt /src
 RUN python -m pip install --upgrade pip
-# drf-yasg 1.21.4 imports pkg_resources, which newer setuptools no longer ships
-RUN pip install --upgrade "setuptools<81"
 RUN pip install -r requirements.txt
 
 # Copy source code

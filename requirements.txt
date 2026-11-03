@@ -11,7 +11,7 @@ django-bootstrap3==21.2
 djangorestframework-simplejwt==5.3.1
 
 # Documentation
-drf-yasg==1.21.4
+drf-yasg==1.21.18
 pyparsing==3.0.8
 
 # Staticfiles
