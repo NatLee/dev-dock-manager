@@ -2,7 +2,6 @@ import uuid
 import json
 import asyncio
 import select
-import base64
 import fcntl
 import struct
 import termios
@@ -39,14 +38,18 @@ def user_group(user_id):
     return f'notifications_user_{user_id}'
 
 
+TOKEN_SUBPROTOCOL_PREFIX = 'token.'
+
+
 def token_from_subprotocols(subprotocols):
-    """The JWT the dashboard passes as a 'token.<base64>' WebSocket subprotocol, or None."""
+    """The JWT the dashboard passes as a 'token.<JWT>' WebSocket subprotocol, or None.
+
+    The JWT is sent unchanged (frontend/lib/wsProtocols.ts): base64url parts joined by dots are
+    already a valid subprotocol. Base64-encoding it again added '=' and '/', which browsers refuse.
+    """
     for protocol in subprotocols or []:
-        if protocol.startswith('token.'):
-            try:
-                return base64.b64decode(protocol.split('.', 1)[1]).decode()
-            except (ValueError, UnicodeDecodeError):
-                return None
+        if protocol.startswith(TOKEN_SUBPROTOCOL_PREFIX):
+            return protocol[len(TOKEN_SUBPROTOCOL_PREFIX):] or None
     return None
 
 
@@ -252,7 +255,7 @@ class ConsoleConsumer(AsyncWebsocketConsumer):
 
 class NotificationConsumer(AsyncWebsocketConsumer):
     """Pushes job results to the dashboard: admins get every desktop's, users only their own.
-    Authenticates like the console, with a 'token.<base64>' subprotocol."""
+    Authenticates like the console, with a 'token.<JWT>' subprotocol."""
 
     async def connect(self):
         self.group = None

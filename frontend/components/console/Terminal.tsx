@@ -6,6 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { getWsOrigin } from "@/lib/api";
 import { getAccessToken } from "@/lib/auth";
+import { tokenSubprotocol } from "@/lib/wsProtocols";
 
 type TerminalProps = {
   containerId: string;
@@ -43,7 +44,7 @@ export function Terminal({ containerId, action, onError }: TerminalProps) {
     }
     const url = getWsOrigin() + "/ws/console/";
     const ws = new WebSocket(url, [
-      "token." + btoa(token),
+      tokenSubprotocol(token),
       "container." + containerId,
     ]);
     wsRef.current = ws;
