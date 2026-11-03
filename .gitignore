@@ -5,12 +5,11 @@ images
 
 log
 logs
-backend/staticfiles
+# collectstatic output (STATIC_ROOT)
+staticfiles/
 
 *.pid
 
-000*_*.py
-*_initial.py
 
 .vscode
 
