@@ -16,6 +16,10 @@ Xfce desktop in the browser (NoVNC), a web terminal and an SSH port, without tou
 API is Django (with Django REST framework and Channels for WebSockets), the dashboard is Next.js, and Traefik
 sits in front of both.
 
+> **Starting fresh? Use [dev-dock-manager-rust](https://github.com/NatLee/dev-dock-manager-rust).** It's the
+> same dashboard, permissions and account pages with a much lighter backend (numbers below). This Django
+> version stays maintained as the older alternative, for example if you want the Django admin or Python.
+
 It grew out of [dev-dock](https://github.com/NatLee/dev-dock) and
 [Django Docker GUI](https://github.com/NatLee/django-docker-gui) (a web UI for Docker with a terminal).
 
@@ -31,11 +35,25 @@ It grew out of [dev-dock](https://github.com/NatLee/dev-dock) and
 | Repo | What it is |
 |---|---|
 | [dev-dock](https://github.com/NatLee/dev-dock) | The `gui-vnc` image: Xfce desktop, VNC, noVNC and SSH in one container. Included here as `gui/`. |
-| **dev-dock-manager** (this repo) | The manager with a Django (Python) API. |
-| [dev-dock-manager-rust](https://github.com/NatLee/dev-dock-manager-rust) | The same dashboard, routes and container setup, with the API rewritten in Rust. |
+| [dev-dock-manager-rust](https://github.com/NatLee/dev-dock-manager-rust) | **The recommended manager.** The same dashboard with a Rust API. |
+| **dev-dock-manager** (this repo) | The older version, with a Django (Python) API. |
 
-The two managers look the same from the browser and start the same containers, so pick one per machine.
-What differs is the backend:
+The two managers look the same from the browser, enforce the same permissions and start the same
+containers, so pick one per machine. Measured side by side on the same machine (medians; how it was measured
+is in the [Rust README](https://github.com/NatLee/dev-dock-manager-rust#why-this-one)):
+
+| Measured (median) | dev-dock-manager (this repo) | dev-dock-manager-rust |
+|---|---|---|
+| Backend image size | 687 MB | 144 MB |
+| Backend memory when idle | 256 MiB | 5.0 MiB |
+| Start-up (`docker start` → API answers) | 8.3 s | 0.58 s |
+| Log in | 129 ms | 18 ms |
+| Container list | 3,185 ms | 478 ms |
+| Image list | 4,973 ms | 324 ms |
+
+The slow list endpoints come from docker-py: it inspects every image one by one, and the container list
+also asks Docker for disk usage. Start-up includes applying migrations, collecting static files and
+`runserver` with its auto-reloader.
 
 | | dev-dock-manager | dev-dock-manager-rust |
 |---|---|---|
@@ -82,12 +100,13 @@ What each click does:
 1. **Log in.** The dashboard posts your username and password to `/api/auth/token` and keeps the access and
    refresh tokens (JWT) in the browser's localStorage. Every API call sends the access token.
 2. **Create.** The API checks the name (two characters or more, starting with a letter) and that the SSH port
-   is free, puts an RQ job on Redis and answers with a `task_id` right away.
+   is free, puts an RQ job on Redis and answers with a `task_id` right away. Only admins may tick "privileged".
 3. **`rqworker` starts the container** from `gui-vnc`: your passwords as environment variables, port 22 on the
    SSH port you picked, `/etc/localtime` mounted read-only, the Traefik labels for `/novnc/<name>/`, and
-   optionally privileged mode or all NVIDIA GPUs.
-4. **The list refreshes** when `CREATED` arrives on the `/ws/notifications/` WebSocket.
-5. **Console** opens a WebSocket to `/ws/console/` with two subprotocols, `token.<base64 JWT>` and
+   optionally privileged mode or all NVIDIA GPUs, plus the `dev-dock.owner` label with your user id.
+4. **The list refreshes** when `CREATED` arrives on the `/ws/notifications/` WebSocket. Notifications only go
+   to the desktop's owner and to admins.
+5. **Console** (your own desktops only; admins: any) opens a WebSocket to `/ws/console/` with two subprotocols, `token.<base64 JWT>` and
    `container.<id>`, and gets a `bash` started with `docker exec` (a root shell). **Attach** connects to the
    container's main process instead. Keys and window size go up as `pty_input` and `pty_resize`.
 6. **NoVNC** opens `/novnc/<name>/` through Traefik and asks for the VNC password you set when creating it.
