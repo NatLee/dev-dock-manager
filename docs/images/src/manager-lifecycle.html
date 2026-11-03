@@ -66,14 +66,14 @@
       api: ['API', 'c-green', 'Django'], worker: ['Queue', 'c-red', 'Redis + rqworker'],
       tokens: 'access 60 h, refresh 1 day',
       ws: 'subprotocols <code>token.&lt;base64 JWT&gt;</code>, <code>container.&lt;id&gt;</code>',
-      notify: 'pushed through a Channels group in Redis',
+      notify: 'Channels group of the owner + the admins group',
     },
     rust: {
       name: 'dev-dock-manager-rust',
       api: ['API', 'c-orange', 'Rust'], worker: ['Queue', 'c-red', 'Redis + worker task'],
       tokens: 'access 1 h, refresh 1 day',
       ws: '<code>?container=&lt;id&gt;</code>, JWT in the first message',
-      notify: 'pushed through an in-process broadcast',
+      notify: 'in-process broadcast, filtered to the owner + admins',
     },
   }[V];
   document.getElementById('name').textContent = T.name;
@@ -106,11 +106,11 @@
   ];
   const notes = [
     [X.B + 12, 242, T.tokens, 'start'],
-    [X.A + 10, 304, 'checks the name and SSH port,<br>queues a job, answers right away', 'start'],
-    [X.C - 6, 398, 'env passwords, <code>22/tcp</code> → SSH port,<br>Traefik labels, <code>d-gui-network</code>', 'end'],
+    [X.A + 10, 304, 'checks name, SSH port, privileged = admins only;<br>queues a job, answers right away', 'start'],
+    [X.C - 6, 398, 'env passwords, <code>22/tcp</code> → SSH port, owner label<br><code>dev-dock.owner</code>, Traefik labels, <code>d-gui-network</code>', 'end'],
     [X.W - 10, 464, T.notify, 'end'],
     [X.B + 12, 528, T.ws, 'start'],
-    [X.D - 10, 528, '<code>exec /bin/bash</code> or <code>attach</code>', 'end'],
+    [X.D - 10, 528, 'owner or admin only; <code>exec /bin/bash</code> or <code>attach</code>', 'end'],
     [X.C - 6, 648, 'asks for the VNC password', 'end'],
     [X.A + 10, 706, '<code>WAITING</code>, then <code>STARTED</code>, <code>STOPPED</code> … on /ws/notifications/', 'start'],
   ];
