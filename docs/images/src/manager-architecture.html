@@ -1,0 +1,165 @@
+<!doctype html>
+<!--
+  Network path of the manager: browser -> Traefik -> frontend / API / desktop containers.
+  The same source is used by dev-dock-manager (Django) and dev-dock-manager-rust (Rust).
+  The hash picks the variant and the theme: #django, #django-dark, #rust, #rust-dark. Render with e.g.
+    msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=960,650
+           --default-background-color=00000000 --virtual-time-budget=5000
+           --screenshot=architecture-dark.png "file:///…/manager-architecture.html#rust-dark"
+  then convert to WebP (magick architecture-dark.png -quality 90 architecture-dark.webp).
+  Names, ports, paths and priorities come from docker-compose.yml and the backend source of each repo.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dev Dock Manager architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="diagram.css">
+<style>
+  body, .frame { width: 960px; height: 650px; }
+  #browser { left: 40px; top: 250px; width: 146px; }
+  #traefik { left: 214px; top: 132px; width: 146px; height: 436px; }
+  #frontend { left: 510px; top: 126px; width: 226px; }
+  #backend { left: 510px; top: 246px; width: 226px; }
+  #desktops { left: 510px; top: 470px; width: 226px; }
+  #redis { left: 760px; top: 246px; width: 160px; }
+  #sqlite { left: 760px; top: 354px; width: 160px; }
+  #docker { left: 760px; top: 470px; width: 160px; }
+  .list { margin: 8px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .list li { position: relative; padding-left: 12px; } .list li::before { content: "›"; position: absolute; left: 0; color: var(--wire-ink); }
+  .list code { font-size: 11px; white-space: nowrap; }
+  .rule { position: absolute; left: 368px; width: 140px; font-size: 11.5px; color: var(--wire-ink); line-height: 1.35; }
+  .rule code { font-size: 11px; }
+  .rule .p { font-size: 10.5px; color: var(--muted); }
+  .note { position: absolute; left: 214px; top: 574px; font-size: 12px; color: var(--muted); }
+  .note code { font-size: 11px; }
+  .sm .title { font-size: 15px; }
+  .sm .sub { font-size: 11.5px; }
+</style>
+</head>
+<body>
+<script>
+  const h = location.hash;
+  if (h.includes('dark')) document.documentElement.className = 'dark';
+  const V = h.includes('rust') ? 'rust' : 'django';
+</script>
+<div class="frame">
+  <div class="dots"></div>
+
+  <header>
+    <div class="mark">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="24" height="17" rx="3"/>
+        <path d="M8.5 10.5l3 2.5-3 2.5M14.5 15.5h5"/>
+        <path d="M10 26h10M15 21v5"/>
+      </svg>
+    </div>
+    <div>
+      <h1 data-k="name"></h1>
+      <p class="tag">How a request gets from your <b>browser</b> to the <b>API</b> or to your <b>desktop container</b>.</p>
+    </div>
+  </header>
+  <div class="pip"><span>$</span>docker compose up -d</div>
+
+  <svg class="wires" width="960" height="650">
+    <!-- browser -> traefik -->
+    <path class="wire solid" d="M186 300 H208"/><path class="head" d="M214 300 l-9 -5 v10 z"/>
+    <!-- traefik -> frontend / backend / desktops -->
+    <path class="wire solid" d="M360 176 H504"/><path class="head" d="M510 176 l-9 -5 v10 z"/>
+    <path class="wire solid" d="M360 300 H504"/><path class="head" d="M510 300 l-9 -5 v10 z"/>
+    <path class="wire solid" d="M360 516 H504"/><path class="head" d="M510 516 l-9 -5 v10 z"/>
+    <!-- backend -> redis / sqlite / docker -->
+    <path class="wire" d="M736 280 H754"/><path class="head" d="M760 280 l-9 -5 v10 z"/>
+    <path class="wire" d="M736 386 H754"/><path class="head" d="M760 386 l-9 -5 v10 z"/>
+    <path class="wire" d="M736 430 C 748 430, 748 490, 754 490"/><path class="head" d="M760 490 l-9 -5 v10 z"/>
+    <!-- docker -> desktops -->
+    <path class="wire" d="M760 544 H742"/><path class="head" d="M736 544 l9 -5 v10 z"/>
+    <!-- ssh, straight to the container -->
+    <path class="wire" d="M112 330 V618 H620 V602"/><path class="head" d="M620 596 l-5 9 h10 z"/>
+  </svg>
+
+  <div class="node" id="browser">
+    <div class="label c-blue"><i></i>You</div>
+    <div class="title sm">Browser</div>
+    <div class="sub"><code>localhost:8000</code></div>
+  </div>
+
+  <div class="node" id="traefik">
+    <div class="label c-purple"><i></i>Proxy <span class="type">v3.7</span></div>
+    <div class="title">Traefik</div>
+    <div class="sub"><code>d-gui-proxy</code></div>
+    <div class="chips"><span class="chip">8000 → :80</span><span class="chip k">dashboard 8080</span></div>
+    <ul class="list" style="margin-top: 12px;">
+      <li>one entrypoint <code>web</code> for pages, API, WebSocket and noVNC</li>
+      <li>finds every service and desktop by its Docker labels</li>
+      <li>all of them share the external network <code>d-gui-network</code></li>
+    </ul>
+  </div>
+
+  <div class="rule" style="top: 138px;">everything else<br><code>PathPrefix(`/`)</code> <span class="p">· prio 1</span></div>
+  <div class="rule" style="top: 250px;"><code>/api</code> <code>/dashboard/api</code><br><code>/ws</code> <span class="p">· prio 10</span></div>
+  <div class="rule" style="top: 464px;"><code>/novnc/&lt;name&gt;/</code><br>strip prefix <span class="p" data-k="novncprio"></span></div>
+
+  <div class="node" id="frontend">
+    <div class="label c-teal"><i></i>Frontend <span class="type">:3000</span></div>
+    <div class="title sm">Next.js dashboard</div>
+    <div class="sub"><code>d-gui-manager-frontend</code> · login, list, create, terminal page</div>
+  </div>
+
+  <div class="node" id="backend">
+    <div class="label" data-k="apicolor"><i></i>API <span class="type">:8000</span></div>
+    <div class="title sm" data-k="apititle"></div>
+    <div class="sub"><code data-k="apictr"></code></div>
+    <ul class="list" data-k="apilist"></ul>
+  </div>
+
+  <div class="node" id="desktops">
+    <div class="label c-green"><i></i>Desktops <span class="type">gui-vnc</span></div>
+    <div class="title sm">One container per name</div>
+    <div class="sub">noVNC on <b>:6901</b> behind Traefik, VNC on :5901 inside, SSH <b>:22</b> → the host port you picked</div>
+  </div>
+
+  <div class="node sm" id="redis">
+    <div class="label c-red"><i></i>Redis</div>
+    <div class="sub" data-k="redis"></div>
+  </div>
+  <div class="node sm" id="sqlite">
+    <div class="label c-blue"><i></i>SQLite</div>
+    <div class="sub" data-k="sqlite"></div>
+  </div>
+  <div class="node sm" id="docker">
+    <div class="label c-teal"><i></i>Docker</div>
+    <div class="sub"><code>/var/run/docker.sock</code><br>create · start · stop · exec · attach</div>
+  </div>
+
+  <div class="wl" style="left: 136px; top: 608px;"><code>ssh &lt;user&gt;@&lt;host&gt; -p &lt;port&gt;</code> goes straight to the container, not through Traefik</div>
+</div>
+<script>
+  const T = {
+    django: {
+      name: 'dev-dock-manager',
+      apicolor: 'label c-green', apititle: 'Django backend', apictr: 'd-gui-manager-web',
+      apilist: ['supervisord runs <code>runserver</code> (Daphne: REST + WebSocket)', 'and <code>rqworker default</code> for Docker jobs', 'JWT login with SimpleJWT'],
+      redis: '<code>redis:alpine</code><br>RQ jobs, Channels, cache',
+      sqlite: '<code>src/db.sqlite3</code><br>Django users',
+      novncprio: '· prio 5',
+    },
+    rust: {
+      name: 'dev-dock-manager-rust',
+      apicolor: 'label c-orange', apititle: 'Rust backend', apictr: 'd-gui-manager-backend',
+      apilist: ['one binary <code>dev-dock-manager-api</code>', 'axum REST + WebSocket, bollard for Docker', 'queue worker task inside the same process'],
+      redis: '<code>redis:alpine</code><br>job list for the worker',
+      sqlite: '<code>./backend-data/</code><br>db.sqlite3: users, Argon2 hashes',
+      novncprio: '',
+    },
+  }[V];
+  for (const el of document.querySelectorAll('[data-k]')) {
+    const v = T[el.dataset.k];
+    if (el.dataset.k === 'apicolor') { el.className = v; continue; }
+    if (Array.isArray(v)) el.innerHTML = v.map(x => '<li>' + x + '</li>').join('');
+    else el.innerHTML = v;
+  }
+</script>
+</body>
+</html>
