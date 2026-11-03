@@ -1,4 +1,5 @@
-"""The ASGI entry point loads on its own, the way Daphne loads it in production."""
+"""Project-level checks: the ASGI entry point loads on its own, the way Daphne loads it, and the
+logging settings configure the loggers they name."""
 import os
 import subprocess
 import sys
@@ -18,3 +19,12 @@ class AsgiEntryPointTest(SimpleTestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr[-2000:])
         self.assertIn("ProtocolTypeRouter", result.stdout)
+
+
+class LoggingSettingsTest(SimpleTestCase):
+    def test_logger_names_are_logger_names(self):
+        # A ''' string ''' used as a comment inside LOGGING once glued itself onto the next key, so
+        # "django.request" was never configured and its messages were printed twice under Daphne.
+        for name in settings.LOGGING["loggers"]:
+            self.assertRegex(name, r"^[\w.]+$")
+        self.assertIn("django.request", settings.LOGGING["loggers"])
