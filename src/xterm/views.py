@@ -5,6 +5,7 @@ Permissions: users see and act on their own desktops, admins on all of them, and
 404 (see xterm.access). Only admins may create privileged containers.
 """
 import docker
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 
@@ -108,48 +109,62 @@ class PortCheckAPIView(APIView):
         except ValueError:
             return JsonResponse({'error': 'Invalid port value'}, status=400)
 
+def may_be_visible_desktop(summary, user) -> bool:
+    """A cheap look at one entry of the container list, before paying for an inspect.
+
+    Docker lists the image a container was created from, or the image ID once that tag points at a
+    newer image. In the second case only the inspect (Config.Image keeps the name) can tell, so those
+    stay in. Labels are the container's own, so the owner check is already final here.
+    """
+    image = summary.get('Image') or ''
+    if not (access.is_gui_image(image) or image == summary.get('ImageID')):
+        return False
+    return access.can_access(user, access.owner_of(summary.get('Labels')))
+
+
 class ContainersListView(APIView):
     def get(self, request, format=None):
         client = access.docker_client()
-        containers = client.containers.list(all=True)
-
-        # Get system-wide information
-        info = client.df()
-        # Create a dictionary for quick access to container sizes
-        container_sizes_rw = {c['Id']: c.get('SizeRw', 0) for c in info['Containers']}
-        container_sizes_rfs = {c['Id']: c.get('SizeRootFs', 0) for c in info['Containers']}
+        # One call lists every container on the host; only the desktops this user may see get
+        # inspected and sized. (docker-py's containers.list() inspects every container, and
+        # client.df() sizes every image, container and volume: seconds on a busy Docker host.)
+        candidates = [s for s in client.api.containers(all=True) if may_be_visible_desktop(s, request.user)]
+        sizes = {}
+        if candidates:
+            sized = client.api.containers(all=True, size=True, filters={'id': [s['Id'] for s in candidates]})
+            sizes = {s['Id']: s for s in sized}
 
         container_data = []
-        for container in containers:
-            config = container.attrs['Config']
+        for summary in candidates:
+            cid = summary['Id']
+            try:
+                detail = client.api.inspect_container(cid)
+            except docker.errors.NotFound:
+                continue  # removed since the list call
+            config = detail['Config']
             if not access.is_gui_image(config.get('Image')):
                 continue
             owner_id = access.owner_of(config.get('Labels'))
             if not access.can_access(request.user, owner_id):
                 continue
 
-            # Fetch detailed container information
-            try:
-                container_detail = client.api.inspect_container(container.id)
-            except Exception:
-                continue  # Skip if container is not found
-
             # Check for privileged mode and device requests (for GPUs)
-            host_config = container_detail['HostConfig']
+            host_config = detail['HostConfig']
             device_requests = host_config.get('DeviceRequests') or []
+            size = sizes.get(cid, {})
 
             container_data.append({
-                'id': container.id,
-                'name': container.name,
-                'status': container.status,
+                'id': cid,
+                'name': detail['Name'].lstrip('/'),
+                'status': detail['State']['Status'],
                 'command': config['Cmd'],
-                'short_id': container.short_id,
+                'short_id': cid[:12],
                 'image_tag': config.get('Image'),
                 'ports': parse_ports(host_config.get('PortBindings') or {}),
                 'privileged': host_config.get('Privileged', False),
                 'nvdocker': any(req.get('Driver', '') == 'nvidia' for req in device_requests),
-                'size_raw': container_sizes_rw.get(container.id, 0),
-                'size_fs': container_sizes_rfs.get(container.id, 0),
+                'size_raw': size.get('SizeRw', 0),
+                'size_fs': size.get('SizeRootFs', 0),
                 'owner_id': owner_id,
             })
 
@@ -166,18 +181,20 @@ class ContainersListView(APIView):
 class ImagesListView(APIView):
     def get(self, request, format=None):
         client = access.docker_client()
-        images = client.images.list()
+        # The list call already has tags and sizes, and Docker filters by repository name, so no
+        # image is inspected (docker-py's images.list() inspects every image on the host).
+        images = client.api.images(name=settings.DOCKER_IMAGE_NAME)
 
         # Only images that have a tag named DOCKER_IMAGE_NAME (e.g. gui-vnc:latest)
         image_data = []
         for image in images:
-            matching_tags = [t for t in image.tags if access.is_gui_image(t)]
+            matching_tags = [t for t in image.get('RepoTags') or [] if access.is_gui_image(t)]
             if not matching_tags:
                 continue
             image_info = {
-                'id': image.id[7:],
-                'size': round(image.attrs['Size'] / 1048576, 2),
-                'short_id': image.short_id[7:],
+                'id': image['Id'][7:],
+                'size': round(image['Size'] / 1048576, 2),
+                'short_id': image['Id'][7:19],
                 'name': matching_tags[0],
                 'tags': matching_tags,
             }
