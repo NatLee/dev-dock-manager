@@ -141,11 +141,18 @@ ASGI_APPLICATION = "backend.asgi.application"
 WSGI_APPLICATION = "backend.wsgi.application"
 
 # -------------- START - Channel Setting --------------
+# The channel layer waits for WebSocket messages with blocking Redis reads of up to
+# RedisChannelLayer.brpop_timeout (5) seconds. redis-py gives up on a read after socket_timeout
+# seconds, and since redis-py 8 that also defaults to 5, so every WebSocket dropped after about
+# 5 seconds. Whoever blocks on Redis has to allow for its own wait (RQ's worker does the same),
+# so the layer's connections get twice its longest wait.
+from channels_redis.core import RedisChannelLayer  # noqa: E402
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [REDIS_URL],
+            "hosts": [{"address": REDIS_URL, "socket_timeout": 2 * RedisChannelLayer.brpop_timeout}],
         },
     },
 }

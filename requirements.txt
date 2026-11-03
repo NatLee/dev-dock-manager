@@ -1,5 +1,8 @@
+# Every package is pinned to the version CI tested. An unpinned redis let redis-py 8 in, whose
+# 5-second default socket timeout cut every WebSocket off (see CHANNEL_LAYERS in settings.py).
+
 # Handle two or more services
-supervisor
+supervisor==4.3.0
 
 # Django
 Django==5.0.7
@@ -18,16 +21,16 @@ pyparsing==3.0.8
 whitenoise==6.5.0
 
 # Misc
-loguru
-google-auth
+loguru==0.7.3
+google-auth==2.62.1
 
 # Redis
-django-redis
-redis
+django-redis==6.0.0
+redis==8.1.0
 
 # Task scheduler
-django-rq
-rq
+django-rq==4.2.0
+rq==3.0.0
 
 # Docker SDK
 docker==7.1.0
@@ -38,5 +41,5 @@ channels_redis==4.1.0
 daphne==4.0.0
 
 # Debug
-ipython
-ipdb
+ipython==9.18.1
+ipdb==0.13.13

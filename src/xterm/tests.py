@@ -1,6 +1,6 @@
 """Permission rules for desktops: users see and act on their own, admins on all, everything else is a
 404; only admins create privileged containers; notifications reach only the owner and the admins;
-every login token makes a WebSocket subprotocol browsers accept.
+every login token makes a WebSocket subprotocol browsers accept; the channel layer outlasts its waits.
 
 Docker is replaced by a small in-memory fake (xterm.access.docker_client is the one place the code
 gets a client from), so these tests need neither Docker nor Redis.
@@ -266,3 +266,17 @@ class TokenSubprotocolTest(SimpleTestCase):
         self.assertIsNone(token_from_subprotocols(["token."]))
         self.assertIsNone(token_from_subprotocols(None))
 
+
+class ChannelLayerTimeoutTest(SimpleTestCase):
+    def test_redis_reads_outlast_the_layers_longest_wait(self):
+        # redis-py 8 closes reads after 5 s by default, exactly as long as the layer blocks waiting for
+        # a message, so every WebSocket dropped after about 5 s. Check what redis-py will really get.
+        from channels_redis.core import RedisChannelLayer
+        from channels_redis.utils import create_pool, decode_hosts
+        from django.conf import settings
+
+        for host in decode_hosts(settings.CHANNEL_LAYERS["default"]["CONFIG"]["hosts"]):
+            # make_connection() builds the connection redis-py would use, without connecting
+            timeout = create_pool(host).make_connection().socket_timeout
+            self.assertIsNotNone(timeout, "a read with no timeout never notices a dead Redis")
+            self.assertGreater(timeout, RedisChannelLayer.brpop_timeout)
