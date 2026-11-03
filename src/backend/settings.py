@@ -54,6 +54,8 @@ DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "d-gui-network")
 # Host whose ports are checked before an SSH port is handed out (the Docker host).
 HOST_FOR_PORT_CHECK = os.environ.get("HOST_FOR_PORT_CHECK", "host.docker.internal")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379")
+# Image the GPU check runs nvidia-smi in (GET /dashboard/api/nvdocker/check); same name in the Rust manager.
+NVIDIA_CHECK_IMAGE = os.environ.get("NVIDIA_CHECK_IMAGE", "nvidia/cuda:11.0.3-base-ubuntu20.04")
 # -------------- END - Docker / Redis --------------
 
 ALLOWED_HOSTS = ['*']

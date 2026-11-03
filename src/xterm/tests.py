@@ -280,3 +280,24 @@ class ChannelLayerTimeoutTest(SimpleTestCase):
             timeout = create_pool(host).make_connection().socket_timeout
             self.assertIsNotNone(timeout, "a read with no timeout never notices a dead Redis")
             self.assertGreater(timeout, RedisChannelLayer.brpop_timeout)
+
+
+class NvidiaCheckTest(SimpleTestCase):
+    def run_check(self, **run_kwargs):
+        from xterm.utils.can_use_nvidia_docker import can_use_nvidia_docker
+        client = mock.Mock()
+        client.containers.run.configure_mock(**run_kwargs)
+        with mock.patch("xterm.access.docker_client", return_value=client):
+            return can_use_nvidia_docker(), client.containers.run
+
+    @override_settings(NVIDIA_CHECK_IMAGE="example/cuda:12-base")
+    def test_runs_nvidia_smi_in_the_configured_image(self):
+        available, run = self.run_check()
+        self.assertTrue(available)
+        self.assertEqual(run.call_args.args, ("example/cuda:12-base",))
+        self.assertEqual(run.call_args.kwargs["command"], "nvidia-smi")
+        self.assertEqual(run.call_args.kwargs["runtime"], "nvidia")
+
+    def test_unavailable_when_docker_refuses(self):
+        available, _ = self.run_check(side_effect=docker.errors.APIError("unknown runtime: nvidia"))
+        self.assertFalse(available)
