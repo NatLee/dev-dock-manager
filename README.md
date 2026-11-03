@@ -153,17 +153,17 @@ You need Linux with Docker running (the backend talks to `/var/run/docker.sock`)
    ./dev-tool.sh create-superuser
    ```
 
-   It asks for a username and password (defaults `admin` / `1234`). To skip the prompts:
-   `./scripts/dev-create-superuser.sh admin mypassword`.
+   It asks for a username and password (defaults `admin` / `1234`; change it on the Account page right
+   after). To skip the prompts: `./scripts/dev-create-superuser.sh admin mypassword`. Everyone else gets an
+   account from the **Users** page in the dashboard.
 
 5. **Open http://localhost:8000/** and log in. It sends you to `/dashboard/containers`.
 
 ## Good to know
 
-- **Opening it from another machine.** The dashboard calls the API at `NEXT_PUBLIC_API_ORIGIN` from
-  `frontend/.env.local`, which is `http://localhost:8000`, and Next.js bakes that in at build time. For any
-  other address, set it to that address, or leave it empty (`NEXT_PUBLIC_API_ORIGIN=`) so the dashboard uses
-  whatever address it was opened from. Then run `docker compose build frontend && docker compose up -d`.
+- **Opening it from another machine** just works: the dashboard talks to the API at whatever address it was
+  opened from. `NEXT_PUBLIC_API_ORIGIN` in `frontend/.env.local` is only for running the frontend on its own
+  (`npm run dev`), and Next.js bakes it in at build time.
 - **Ports.** 8000 is the app, 8080 is the Traefik dashboard. Each desktop also takes the SSH port you pick.
 - **Data and code.** `./src` is mounted into the backend for hot reloading, so the SQLite database
   (`src/db.sqlite3`) and the logs (`src/logs/`) end up there. The desktops are ordinary containers named after
@@ -175,11 +175,27 @@ You need Linux with Docker running (the backend talks to `/var/run/docker.sock`)
   the RQ queue at `/api/__django-rq/`. The backend also has a Google sign-in endpoint
   (`/api/auth/google/token`) that the dashboard doesn't use.
 
+### Users and permissions
+
+- **Users** see and control only the desktops they created: the list, the terminal, NoVNC links, start,
+  stop and remove, and the live notifications. Someone else's desktop answers 404, as if it didn't exist.
+  Users change their own password on the **Account** page.
+- **Admins** see everyone's desktops (with an Owner column), are the only ones who can create privileged
+  containers, and manage accounts on the **Users** page: create users, make them admin or user, disable or
+  enable them, set a new password. Admins can't demote or disable themselves, so there's always a way back in.
+- It's Django's own user model: "admin" means `is_staff` + `is_superuser` (so the Django admin agrees),
+  "disabled" means `is_active = False`, and new passwords go through `AUTH_PASSWORD_VALIDATORS`. A disabled
+  account can't log in, and the tokens it already had stop working on the next request.
+- Ownership is a Docker label (`dev-dock.owner`) on each desktop. Desktops created before this existed have
+  no owner, so only admins see them.
+- Account API (under `/dashboard/api/`): `GET me`, `POST me/password`; admins only: `GET`/`POST users`,
+  `PATCH users/<id>`, `POST users/<id>/password`. Same routes and JSON as the Rust manager.
+
 ### Before you put it on a network
 
-It's built for a trusted group on one machine. Every account can see and control every desktop (there's no
-per-user ownership), and can create privileged containers. With the Docker socket mounted, that amounts to
-root on the host. Also, the Traefik dashboard on 8080 runs with `--api.insecure`, so don't expose that port.
+The backend holds the Docker socket, so an admin account is effectively root on the host. The Traefik
+dashboard on 8080 runs with `--api.insecure`, so don't expose that port. NoVNC pages are protected by each
+desktop's VNC password, not by the dashboard login.
 
 ## Nvidia Docker Support
 
