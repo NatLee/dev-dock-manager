@@ -1,40 +1,28 @@
+"""RQ jobs that do the Docker work for the desktop API. Each job reports back through the
+notifications WebSocket, addressed to the desktop's owner (and the admins)."""
 import docker
 from django.conf import settings
 from django_rq import job
 
+from xterm import access
 from xterm.consumers import send_notification_to_group
 
-DOCKER_NETWORK = settings.DOCKER_NETWORK
 
 @job
-def run_image_task(image_name, ports, volumes, environment, name, privileged=False, nvdocker=False):
-    client = docker.from_env()
+def run_image_task(ports, volumes, environment, name, owner_id, privileged=False, nvdocker=False):
+    client = access.docker_client()
     device_requests = []
-    network = client.networks.get(DOCKER_NETWORK)
-
     if nvdocker:
-        # Define device requests for NVIDIA GPUs
-        device_requests += [
+        device_requests.append(
             docker.types.DeviceRequest(
                 count=-1,  # -1 specifies all available GPUs
                 capabilities=[['gpu']],  # This is the equivalent of `--gpus all`
                 driver='nvidia'
             )
-        ]
-
-    traefik_labels = {
-        "traefik.enable": "true",
-        f"traefik.http.routers.d-gui-{name}.rule": f"PathPrefix(`/novnc/{name}/`)",
-        f"traefik.http.routers.d-gui-{name}.priority": "5",
-        f"traefik.http.routers.d-gui-{name}.entrypoints": "web",
-        f"traefik.http.services.d-gui-{name}.loadbalancer.server.port": "6901",
-        f"traefik.http.middlewares.d-gui-{name}-strip-prefix.stripprefix.prefixes": f"/novnc/{name}/",
-        f"traefik.http.routers.d-gui-{name}.middlewares": f'd-gui-{name}-strip-prefix',
-        "traefik.docker.network": DOCKER_NETWORK,
-    }
+        )
 
     container = client.containers.run(
-        image_name,
+        settings.DOCKER_IMAGE_NAME,
         stdin_open=True,
         detach=True,
         tty=True,
@@ -44,79 +32,39 @@ def run_image_task(image_name, ports, volumes, environment, name, privileged=Fal
         name=name,
         privileged=privileged,
         device_requests=device_requests,
-        network=network.id,  # Attach the container to the network
-        labels=traefik_labels
+        network=settings.DOCKER_NETWORK,
+        labels=access.gui_container_labels(name, owner_id),
     )
 
-    image_name = "none"
-    if container.image.tags:
-        image_name = container.image.tags[0]
-    container_name = container.attrs['Name'][1:]
-    msg = f"Container [{container_name}] ({image_name}) has been created"
-
-    message = {
-        "action": "CREATED",
-        "details": msg
-    }
-    send_notification_to_group(message=message)
+    image_name = container.image.tags[0] if container.image.tags else "none"
+    msg = f"Container [{container.name}] ({image_name}) has been created"
+    send_notification_to_group({"action": "CREATED", "details": msg}, owner_id)
     return msg
+
+
+def _control(container_id, owner_id, operation, action, verb):
+    container = access.docker_client().containers.get(container_id)
+    operation(container)
+    msg = f"Container [{container.name}] has been {verb}"
+    send_notification_to_group({"action": action, "details": msg}, owner_id)
+    return msg
+
 
 @job
-def run_container_task(id):
-    client = docker.from_env()
-    container = client.containers.get(id)
-    container.start()
-    container_name = container.name
-    msg = f"Container [{container_name}] has been started"
+def run_container_task(id, owner_id=None):
+    return _control(id, owner_id, lambda c: c.start(), "STARTED", "started")
 
-    message = {
-        "action": "STARTED",
-        "details": msg
-    }
-    send_notification_to_group(message=message)
-
-    return msg
 
 @job
-def stop_container_task(id):
-    client = docker.from_env()
-    container = client.containers.get(id)
-    container.stop()
-    container_name = container.name
-    msg = f"Container [{container_name}] has been stopped"
-    message = {
-        "action": "STOPPED",
-        "details": msg
-    }
-    send_notification_to_group(message=message)
-    return msg
+def stop_container_task(id, owner_id=None):
+    return _control(id, owner_id, lambda c: c.stop(), "STOPPED", "stopped")
+
 
 @job
-def remove_container_task(id):
-    client = docker.from_env()
-    container = client.containers.get(id)
-    container.remove()
-    container_name = container.name
-    msg = f"Container [{container_name}] has been removed"
+def remove_container_task(id, owner_id=None):
+    return _control(id, owner_id, lambda c: c.remove(), "REMOVED", "removed")
 
-    message = {
-        "action": "REMOVED",
-        "details": msg
-    }
-    send_notification_to_group(message=message)
-    return msg
 
 @job
-def restart_container_task(id):
-    client = docker.from_env()
-    container = client.containers.get(id)
-    container.restart()
-    container_name = container.name
-    msg = f"Container [{container_name}] has been restarted"
-
-    message = {
-        "action": "RESTARTED",
-        "details": msg
-    }
-    send_notification_to_group(message=message)
-    return msg
+def restart_container_task(id, owner_id=None):
+    return _control(id, owner_id, lambda c: c.restart(), "RESTARTED", "restarted")

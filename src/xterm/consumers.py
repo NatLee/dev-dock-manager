@@ -19,57 +19,63 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 
 from channels.layers import get_channel_layer
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.exceptions import StopConsumer
+
+from xterm import access
 
 import logging
 logger = logging.getLogger(__name__)
+
+# Close codes the dashboard understands (4000+ is the application range)
+CLOSE_BAD_REQUEST = 4000
+CLOSE_UNAUTHORIZED = 4001
+CLOSE_NOT_FOUND = 4004
+
+# Notification groups: admins hear about every desktop, users only about their own.
+ADMINS_GROUP = 'notifications_admins'
+NOTIFICATIONS_SUBPROTOCOL = 'notifications'
+
+
+def user_group(user_id):
+    return f'notifications_user_{user_id}'
+
+
+def token_from_subprotocols(subprotocols):
+    """The JWT the dashboard passes as a 'token.<base64>' WebSocket subprotocol, or None."""
+    for protocol in subprotocols or []:
+        if protocol.startswith('token.'):
+            try:
+                return base64.b64decode(protocol.split('.', 1)[1]).decode()
+            except (ValueError, UnicodeDecodeError):
+                return None
+    return None
+
+
+async def user_from_token(token):
+    """The active user an access token belongs to, or None (bad token, unknown or disabled user)."""
+    if not token:
+        return None
+    try:
+        user_id = AccessToken(token)['user_id']
+    except (InvalidToken, TokenError, KeyError):
+        return None
+    return await sync_to_async(User.objects.filter(id=user_id, is_active=True).first)()
 
 class ConsoleConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.docker_socket = None
         self.group_name = 'console'
 
-        subprotocol_container = None
-        token = None
-
-        # Check for subprotocols
-        if self.scope['subprotocols']:
-            try:
-                for protocol in self.scope['subprotocols']:
-                    if protocol.startswith('token.'):
-                        # Extract token from subprotocol
-                        base64_encoded_token = protocol.split('.', 1)[1]
-                        # Decode token
-                        token = base64.b64decode(base64_encoded_token).decode()
-                    elif protocol.startswith('container.'):
-                        # Use the `auth` ticket as the subprotocol
-                        subprotocol_container = protocol
-            except Exception as e:
-                logger.error(f"Error parsing subprotocols: {e}")
-                await self.close(code=4000)
-                return
-            if not token or not subprotocol_container:
-                logger.error("Missing required subprotocols")
-                await self.close(code=4000)
-                return
-        else:
-            logger.error("No subprotocols provided")
-            await self.close(code=4000)
+        subprotocols = self.scope['subprotocols'] or []
+        subprotocol_container = next((p for p in subprotocols if p.startswith('container.')), None)
+        token = token_from_subprotocols(subprotocols)
+        if not token or not subprotocol_container:
+            logger.error("Missing required subprotocols")
+            await self.close(code=CLOSE_BAD_REQUEST)
             return
-
-        try:
-            # Verify JWT token
-            access_token = AccessToken(token)
-            # Get user from token
-            user = await sync_to_async(User.objects.get)(id=access_token['user_id'])
-        except User.DoesNotExist:
-            print(f"User not found")
-            await self.close(code=4001)
-            raise StopConsumer("User Authentication failed")
-        except (InvalidToken, TokenError) as e:
-            print(f"Token invalid: {e}")
-            await self.close(code=4001)
-            raise StopConsumer("Token Authentication failed")
+        self.user = await user_from_token(token)
+        if self.user is None:
+            await self.close(code=CLOSE_UNAUTHORIZED)
+            return
 
         await self.accept(subprotocol_container)
         await self.channel_layer.group_add(self.group_name, self.channel_name)
@@ -119,6 +125,10 @@ class ConsoleConsumer(AsyncWebsocketConsumer):
         action = message.get('action')
         payload = message.get('payload')
         # Handle the message based on the action
+        if action in ('shell', 'attach') and not await self.may_use(payload["Id"]):
+            # someone else's desktop, or not a desktop at all: same answer as "doesn't exist"
+            await self.close(code=CLOSE_NOT_FOUND)
+            return
         if action == 'shell':
             container_id = payload["Id"]
             # Start a shell in the container
@@ -220,6 +230,11 @@ class ConsoleConsumer(AsyncWebsocketConsumer):
         except docker.errors.APIError as e:
             logger.error(f"Failed to resize tty: {e}")
 
+    @sync_to_async
+    def may_use(self, container_id):
+        container = access.find_gui_container(access.docker_client(), container_id)
+        return container is not None and access.can_access(self.user, access.container_owner(container))
+
     def get_container_status(self, container_id):
         client = docker.APIClient()
         return client.containers(all=True, filters={'id': container_id})[0]["State"]
@@ -236,42 +251,36 @@ class ConsoleConsumer(AsyncWebsocketConsumer):
 
 
 class NotificationConsumer(AsyncWebsocketConsumer):
+    """Pushes job results to the dashboard: admins get every desktop's, users only their own.
+    Authenticates like the console, with a 'token.<base64>' subprotocol."""
+
     async def connect(self):
-        self.room_name = 'notifications'  # Can be dynamic based on path
-        self.room_group_name = f'group_{self.room_name}'
-
-        # Join room group
-        await self.channel_layer.group_add(
-            self.room_group_name,
-            self.channel_name
-        )
-
-        await self.accept()
+        self.group = None
+        user = await user_from_token(token_from_subprotocols(self.scope['subprotocols']))
+        if user is None:
+            await self.close(code=CLOSE_UNAUTHORIZED)
+            return
+        self.group = ADMINS_GROUP if access.is_admin(user) else user_group(user.id)
+        await self.channel_layer.group_add(self.group, self.channel_name)
+        await self.accept(NOTIFICATIONS_SUBPROTOCOL)
 
     async def disconnect(self, close_code):
-        # Leave room group
-        await self.channel_layer.group_discard(
-            self.room_group_name,
-            self.channel_name
-        )
+        if self.group:
+            await self.channel_layer.group_discard(self.group, self.channel_name)
 
     # Receive message from room group
     async def send_notification(self, event):
-        message = event['message']
-
-        # Send message to WebSocket
         await self.send(text_data=json.dumps({
-            'message': message
+            'message': event['message']
         }))
 
 
-def send_notification_to_group(message):
+def send_notification_to_group(message, owner_id=None):
+    """Send a notification about a desktop to its owner and to the admins."""
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        'group_notifications',  # Must match the group name used in your consumer
-        {
+    groups = [ADMINS_GROUP] + ([user_group(owner_id)] if owner_id is not None else [])
+    for group in groups:
+        async_to_sync(channel_layer.group_send)(group, {
             'type': 'send_notification',
             'message': message
-        }
-    )
-
+        })
