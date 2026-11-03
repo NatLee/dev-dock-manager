@@ -26,27 +26,63 @@ SUBPROTOCOL = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 
 
 class FakeContainer:
-    def __init__(self, cid, name, image, owner=None, running=True):
+    def __init__(self, cid, name, image, owner=None, running=True, image_id=None, size_rw=0, size_fs=0):
         labels = {} if owner is None else {access.OWNER_LABEL: str(owner)}
         self.id, self.name, self.short_id = cid, name, cid[:12]
         self.status = "running" if running else "exited"
+        self.image_id = image_id or "sha256:" + "f" * 64
+        # What the list call shows: the image it was created from, or the image ID once that tag
+        # points at a newer image (set listed_image = image_id for that case).
+        self.listed_image = image
+        self.size_rw, self.size_fs = size_rw, size_fs
         self.attrs = {
             "Name": "/" + name,
             "Config": {"Image": image, "Labels": labels, "Cmd": ["supervisord"]},
             "HostConfig": {"PortBindings": {"22/tcp": [{"HostPort": "2222"}]}, "Privileged": False},
-            "State": {"Running": running},
+            "State": {"Running": running, "Status": self.status},
         }
+
+
+class FakeDockerApi:
+    """client.api: the low-level calls, answering the way the Docker API does, and counting them."""
+
+    def __init__(self, docker_client):
+        self.docker = docker_client
+        self.calls = []
+
+    def containers(self, all=False, size=False, filters=None):
+        self.calls.append("containers?size" if size else "containers")
+        wanted = (filters or {}).get("id")
+        listed = []
+        for c in self.docker.items:
+            if wanted is not None and c.id not in wanted:
+                continue
+            entry = {"Id": c.id, "Names": ["/" + c.name], "Image": c.listed_image, "ImageID": c.image_id,
+                     "Labels": c.attrs["Config"]["Labels"], "State": c.status}
+            if size:
+                entry.update(SizeRw=c.size_rw, SizeRootFs=c.size_fs)
+            listed.append(entry)
+        return listed
+
+    def inspect_container(self, cid):
+        self.calls.append("inspect " + cid[:1])
+        return self.docker.get(cid).attrs
+
+    def images(self, name=None):
+        self.calls.append("images")
+        return [i for i in self.docker.image_list
+                if name is None or any(access.image_repository(t) == name for t in i["RepoTags"])]
 
 
 class FakeDocker:
     """Just enough of docker.DockerClient for the views and consumers."""
 
-    def __init__(self, *containers):
+    def __init__(self, *containers, images=()):
         self.items = list(containers)
+        self.image_list = list(images)
         self.created = []
         self.containers = self
-        self.api = self
-        self.images = mock.Mock(list=mock.Mock(return_value=[]))
+        self.api = FakeDockerApi(self)
 
     # client.containers.*
     def list(self, all=False):
@@ -62,13 +98,7 @@ class FakeDocker:
         self.created.append((image, kwargs))
         return mock.Mock(name=kwargs["name"], image=mock.Mock(tags=[f"{image}:latest"]))
 
-    # client.api.* / client.*
-    def inspect_container(self, cid):
-        return self.get(cid).attrs
-
-    def df(self):
-        return {"Containers": []}
-
+    # client.*
     def info(self):
         return {}
 
@@ -106,7 +136,7 @@ class DesktopPermissionsTest(TestCase):
         self.alice = User.objects.create_user("alice", password="x")
         self.bob = User.objects.create_user("bob", password="x")
         self.docker = FakeDocker(
-            FakeContainer("a" * 64, "alice-desk", f"{GUI}:latest", owner=self.alice.id),
+            FakeContainer("a" * 64, "alice-desk", f"{GUI}:latest", owner=self.alice.id, size_rw=10, size_fs=20),
             FakeContainer("b" * 64, "bob-desk", GUI, owner=self.bob.id),
             FakeContainer("c" * 64, "old-desk", GUI),  # from before ownership existed
             FakeContainer("d" * 64, "traefik", "traefik:v3.7", owner=self.alice.id),  # not a desktop
@@ -180,6 +210,54 @@ class DesktopPermissionsTest(TestCase):
         self.assertEqual(image, GUI)
         self.assertEqual(kwargs["labels"][access.OWNER_LABEL], str(self.bob.id))
         self.assertEqual(notify.call_args.args[1], self.bob.id)
+
+    def test_list_entry_fields(self):
+        res = self.client_for(self.alice).get("/dashboard/api/containers").json()["containers"]
+        self.assertEqual(res, [{
+            "id": "a" * 64, "name": "alice-desk", "status": "running", "command": ["supervisord"],
+            "short_id": "a" * 12, "image_tag": f"{GUI}:latest", "ports": {"ssh": "2222"}, "privileged": False,
+            "nvdocker": False, "size_raw": 10, "size_fs": 20, "owner_id": self.alice.id, "owner": "alice",
+        }])
+
+    def test_list_inspects_only_the_desktops_the_user_may_see(self):
+        # One list call, one sized list of the candidates, and an inspect per visible desktop: nothing
+        # for other people's desktops or unrelated containers, and no system-wide disk usage.
+        self.visible(self.alice)
+        self.assertEqual(self.docker.api.calls, ["containers", "containers?size", "inspect a"])
+        self.docker.api.calls.clear()
+        self.visible(self.admin)
+        self.assertEqual(self.docker.api.calls,
+                         ["containers", "containers?size", "inspect a", "inspect b", "inspect c"])
+
+    def test_desktop_whose_image_tag_moved_is_still_listed(self):
+        # Docker then lists the image ID instead of the name; only the inspect shows it is a desktop
+        bob_desk = self.docker.get("b" * 64)
+        bob_desk.listed_image = bob_desk.image_id
+        self.assertEqual(self.visible(self.bob), ["bob-desk"])
+
+    def test_desktop_removed_while_listing_is_skipped(self):
+        original = self.docker.api.inspect_container
+
+        def gone_for_a(cid):
+            if cid == "a" * 64:
+                raise docker.errors.NotFound("No such container")
+            return original(cid)
+
+        with mock.patch.object(self.docker.api, "inspect_container", side_effect=gone_for_a):
+            self.assertEqual(self.visible(self.admin), ["bob-desk", "old-desk"])
+
+    def test_image_list_comes_from_one_call(self):
+        self.docker.image_list = [
+            {"Id": "sha256:" + "1" * 64, "RepoTags": [f"{GUI}:latest", f"{GUI}:2.0.1", "other:1"], "Size": 512 * 1048576},
+            {"Id": "sha256:" + "2" * 64, "RepoTags": [f"natlee/{GUI}:latest"], "Size": 1},
+        ]
+        res = self.client_for(self.alice).get("/dashboard/api/images")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()["images"], [{
+            "id": "1" * 64, "size": 512.0, "short_id": "1" * 12, "name": f"{GUI}:latest",
+            "tags": [f"{GUI}:latest", f"{GUI}:2.0.1"],
+        }])
+        self.assertEqual(self.docker.api.calls, ["images"])
 
     def test_port_helpers_need_a_login(self):
         self.assertEqual(APIClient().get("/dashboard/api/ports?count=1").status_code, 401)
