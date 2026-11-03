@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "custom_auth",
     "login",
     'xterm',
+    'accounts',
 ]
 
 MIDDLEWARE = [

@@ -14,9 +14,13 @@ import {
   setTokens,
   verifyToken,
 } from "@/lib/auth";
+import { apiFetch } from "@/lib/api";
+import type { Account } from "@/types/api";
 
 type AuthContextValue = {
   token: string | null;
+  /** The logged-in account (role decides which pages and options show up). */
+  me: Account | null;
   isReady: boolean;
   login: (access: string, refresh: string) => void;
   logout: () => void;
@@ -25,8 +29,14 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+async function fetchMe(token: string): Promise<Account | null> {
+  const res = await apiFetch("/dashboard/api/me", { token });
+  return res.ok ? ((await res.json()) as Account) : null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
+  const [me, setMe] = useState<Account | null>(null);
   const [isReady, setIsReady] = useState(false);
   const router = useRouter();
 
@@ -38,19 +48,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     clearTokens();
     setToken(null);
+    setMe(null);
     router.push("/login");
   }, [router]);
 
   const ensureAuth = useCallback(async (): Promise<boolean> => {
     const t = getAccessToken();
     if (!t) return false;
-    const ok = await verifyToken(t);
-    if (!ok) {
+    const account = (await verifyToken(t)) ? await fetchMe(t) : null;
+    if (!account) {
       clearTokens();
       setToken(null);
+      setMe(null);
       return false;
     }
     setToken(t);
+    setMe(account);
     return true;
   }, []);
 
@@ -62,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, isReady, login, logout, ensureAuth }}
+      value={{ token, me, isReady, login, logout, ensureAuth }}
     >
       {children}
     </AuthContext.Provider>

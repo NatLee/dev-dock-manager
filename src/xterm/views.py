@@ -1,20 +1,26 @@
-import docker
+"""Desktop (GUI container) API: list, create, start/stop/restart/remove, console metadata, port and
+environment checks.
 
+Permissions: users see and act on their own desktops, admins on all of them, and anything else is a
+404 (see xterm.access). Only admins may create privileged containers.
+"""
+import docker
+from django.contrib.auth.models import User
 from django.http import JsonResponse
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
-from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework import status
 
 from drf_yasg.utils import swagger_auto_schema
 
+from xterm import access
 from xterm.task import run_image_task
 from xterm.task import run_container_task
 from xterm.task import remove_container_task
 from xterm.task import stop_container_task
 from xterm.task import restart_container_task
+from xterm.consumers import send_notification_to_group
 
 from xterm.utils.parse_ports import parse_ports
 from xterm.utils.is_int import is_int
@@ -27,11 +33,6 @@ from xterm.utils.is_linux import is_linux
 from xterm.schemas import count_param, free_ports_response, error_response
 from xterm.schemas import run_container_request_body, run_container_responses
 from xterm.schemas import check_port_params, check_port_in_used_response
-
-from django.conf import settings
-
-# Image the desktops are created from (DOCKER_IMAGE_NAME)
-GUI_IMAGE_TAG_NAME = settings.DOCKER_IMAGE_NAME
 
 
 class NvidiaDockerCheckAPIView(APIView):
@@ -65,7 +66,6 @@ class LinuxCheckAPIView(APIView):
             )
 
 class FreePortsAPIView(APIView):
-    permission_classes = [AllowAny]
     @swagger_auto_schema(
         operation_summary="Get Free Ports in host",
         operation_description="Returns a list of free ports on the server",
@@ -109,9 +109,8 @@ class PortCheckAPIView(APIView):
             return JsonResponse({'error': 'Invalid port value'}, status=400)
 
 class ContainersListView(APIView):
-    permission_classes = (IsAuthenticated,)
     def get(self, request, format=None):
-        client = docker.from_env()
+        client = access.docker_client()
         containers = client.containers.list(all=True)
 
         # Get system-wide information
@@ -120,19 +119,13 @@ class ContainersListView(APIView):
         container_sizes_rw = {c['Id']: c.get('SizeRw', 0) for c in info['Containers']}
         container_sizes_rfs = {c['Id']: c.get('SizeRootFs', 0) for c in info['Containers']}
 
-        # Serialize the container data
         container_data = []
         for container in containers:
-            image_tag = None
-            image_tags = container.image.tags
-            if image_tags:
-                image_tag = image_tags[0]
-
-            if image_tag is None:
+            config = container.attrs['Config']
+            if not access.is_gui_image(config.get('Image')):
                 continue
-
-            if image_tag and image_tag.split(':')[0] != GUI_IMAGE_TAG_NAME:
-                # only select containers with name starting with `gui-d`
+            owner_id = access.owner_of(config.get('Labels'))
+            if not access.can_access(request.user, owner_id):
                 continue
 
             # Fetch detailed container information
@@ -141,56 +134,44 @@ class ContainersListView(APIView):
             except Exception:
                 continue  # Skip if container is not found
 
-            # Fetch container size using the dictionary
-            container_size_rw = container_sizes_rw.get(container.id, 0)
-            container_size_rfs = container_sizes_rfs.get(container.id, 0)
-
             # Check for privileged mode and device requests (for GPUs)
-            privileged = container_detail['HostConfig'].get('Privileged', False)
-            device_requests:list = container_detail['HostConfig'].get('DeviceRequests', [])
-            
-            # Get port bindings
-            port_bindings:dict = container_detail['HostConfig'].get('PortBindings', {})
+            host_config = container_detail['HostConfig']
+            device_requests = host_config.get('DeviceRequests') or []
 
-            nvdocker = False
-            if device_requests:
-                nvdocker = any(req.get('Driver', '') == 'nvidia' for req in device_requests)
-
-            container_info = {
+            container_data.append({
                 'id': container.id,
                 'name': container.name,
                 'status': container.status,
-                'command': container.attrs['Config']['Cmd'],
+                'command': config['Cmd'],
                 'short_id': container.short_id,
-                'image_tag': image_tag,
-                'ports': parse_ports(port_bindings),
-                'privileged': privileged,
-                'nvdocker': nvdocker,
-                'size_raw': container_size_rw,
-                'size_fs': container_size_rfs,
-            }
+                'image_tag': config.get('Image'),
+                'ports': parse_ports(host_config.get('PortBindings') or {}),
+                'privileged': host_config.get('Privileged', False),
+                'nvdocker': any(req.get('Driver', '') == 'nvidia' for req in device_requests),
+                'size_raw': container_sizes_rw.get(container.id, 0),
+                'size_fs': container_sizes_rfs.get(container.id, 0),
+                'owner_id': owner_id,
+            })
 
-            container_data.append(container_info)
-
-        # Serialize additional information if necessary
-        info = client.info()  # Transform this as needed
+        # Owner names, so admins can tell whose desktop each one is
+        owner_ids = {c['owner_id'] for c in container_data if c['owner_id'] is not None}
+        names = dict(User.objects.filter(id__in=owner_ids).values_list('id', 'username'))
+        for c in container_data:
+            c['owner'] = names.get(c['owner_id'])
 
         return Response({
             'containers': container_data,
         })
 
 class ImagesListView(APIView):
-    permission_classes = (IsAuthenticated,)
     def get(self, request, format=None):
-        client = docker.from_env()
+        client = access.docker_client()
         images = client.images.list()
 
-        # Serialize the image data; only include images matching DOCKER_IMAGE_NAME (e.g. gui-vnc)
+        # Only images that have a tag named DOCKER_IMAGE_NAME (e.g. gui-vnc:latest)
         image_data = []
         for image in images:
-            if not image.tags:
-                continue
-            matching_tags = [t for t in image.tags if GUI_IMAGE_TAG_NAME in t]
+            matching_tags = [t for t in image.tags if access.is_gui_image(t)]
             if not matching_tags:
                 continue
             image_info = {
@@ -202,36 +183,25 @@ class ImagesListView(APIView):
             }
             image_data.append(image_info)
 
-        # Serialize additional information if necessary
-        info = client.info()  # Transform this as needed
-
         return Response({
             'images': image_data,
-            'info': info  # Ensure this is in a serializable format
+            'info': client.info(),
         })
 
 class ConsoleView(APIView):
-    permission_classes = (IsAuthenticated,)
     def get(self, request, id, action):
-        client = docker.from_env()
-        container = client.containers.get(id)
+        container = access.accessible_container(access.docker_client(), request.user, id)
         commands = container.attrs['Config']['Cmd']
-        if not commands:
-            command = None
-        else:
-            command = ' '.join(commands)
-
         return Response({
-            'id': id,
+            'id': container.id,
             'container_name': container.attrs['Name'][1:],  # Remove the leading "/"
             'image': container.attrs['Config']['Image'],
             'short_id': container.short_id,
-            'command': command,
+            'command': ' '.join(commands) if commands else None,
             'action': action
         })
 
 class RunContainerView(APIView):
-    permission_classes = (IsAuthenticated,)
 
     @swagger_auto_schema(
         operation_summary="Run Container",
@@ -240,13 +210,25 @@ class RunContainerView(APIView):
         request_body=run_container_request_body,
     )
     def post(self, request, *args, **kwargs):
+        privileged = request.data.get('privileged', False)
+        if isinstance(privileged, str):
+            privileged = privileged.lower() == 'true'
+        if privileged and not access.is_admin(request.user):
+            return Response({
+                'error': 'Only admins can create privileged containers'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        nvdocker = request.data.get('nvdocker', False)
+        if isinstance(nvdocker, str):
+            nvdocker = nvdocker.lower() == 'true'
+
         container_name = request.data['container_name']
         container_name = container_name.replace("/", "-")
 
         # Container name must be at least 2 character long
         if len(container_name) < 2:
             return Response({
-                'error': 'Container name must be at least 1 character long'
+                'error': 'Container name must be at least 2 characters long'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Container name must start with a letter
@@ -256,7 +238,7 @@ class RunContainerView(APIView):
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if the container name is already in use
-        client = docker.from_env()
+        client = access.docker_client()
         try:
             client.containers.get(container_name)
             return Response({
@@ -283,21 +265,6 @@ class RunContainerView(APIView):
                 'error': f'Port [{ssh}] is already in use by other services'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        user = request.data['user']
-        password = request.data['password']
-        vnc_password = request.data['vnc_password']
-        root_password = request.data['root_password']
-
-        # Convert string input to Boolean
-        privileged = request.data.get('privileged', 'false')
-        if isinstance(privileged, str):
-            privileged = privileged.lower() == 'true'
-
-        nvdocker = request.data.get('nvdocker', 'false')
-        if isinstance(nvdocker, str):
-            nvdocker = nvdocker.lower() == 'true'
-
-
         volumes = {}
         if is_linux():
             # notice: docker in docker but using host path
@@ -306,24 +273,18 @@ class RunContainerView(APIView):
             # mount host time zone to container
             volumes['/etc/localtime'] = {'bind': '/etc/localtime', 'mode': 'ro'}
 
-        # Call the task function with the form inputs
+        # Everything else (resolution, locale...) is left to the image defaults.
         job = run_image_task.delay(
-            image_name=GUI_IMAGE_TAG_NAME,
-            ports={
-                # {container_port: host_port}
-                # '5901/tcp': vnc, # no need to use vnc
-                # '6901/tcp': novnc, # already use traefik to proxy the URL
-                '22/tcp': ssh,
-            },
+            ports={f'{access.GUI_SSH_PORT}/tcp': ssh},
             volumes=volumes,
             environment={
-                'VNC_PW': vnc_password,
-                'VNC_RESOLUTION': '1600x900',
-                'DEFAULT_USER': user,
-                'DEFAULT_USER_PASSWORD': password,
-                'ROOT_PASSWORD': root_password,
+                'VNC_PW': request.data['vnc_password'],
+                'DEFAULT_USER': request.data['user'],
+                'DEFAULT_USER_PASSWORD': request.data['password'],
+                'ROOT_PASSWORD': request.data['root_password'],
             },
             name=container_name,
+            owner_id=request.user.id,
             privileged=privileged,
             nvdocker=nvdocker
         )
@@ -332,45 +293,32 @@ class RunContainerView(APIView):
             "task_id": job.id
         })
 
-from xterm.consumers import send_notification_to_group
+
+CONTROL_TASKS = {
+    "start": run_container_task,
+    "stop": stop_container_task,
+    "remove": remove_container_task,
+    "restart": restart_container_task,
+}
+
 
 class ContainersControl(APIView):
-    permission_classes = (IsAuthenticated,)
 
     def post(self, request, *args, **kwargs):
-
         cmd = request.data['cmd']
-        _id = request.data['id']
+        task = CONTROL_TASKS.get(cmd)
+        if task is None:
+            return Response({'error': 'invalid cmd'}, status=status.HTTP_400_BAD_REQUEST)
+        container = access.accessible_container(access.docker_client(), request.user, request.data['id'])
+        owner_id = access.container_owner(container)
 
-        job = None
-
-        if cmd == "start" or cmd == "restart" or cmd == "stop"  or cmd == "remove":
-            # ========================
-            # Send notification to group
-            message = {
-                "action": "WAITING",
-                "details": f"Waiting [{_id[:8]}] for the task to complete [{cmd}]",
-                "data": {
-                    "container_id": _id,
-                    "cmd": cmd,
-                }
+        send_notification_to_group({
+            "action": "WAITING",
+            "details": f"Waiting [{container.id[:8]}] for the task to complete [{cmd}]",
+            "data": {
+                "container_id": container.id,
+                "cmd": cmd,
             }
-            send_notification_to_group(message)
-            # ========================
-
-        if cmd == "start":
-            job = run_container_task.delay(_id)
-        elif cmd == "stop":
-            job = stop_container_task.delay(_id)
-        elif cmd == "remove":
-            job = remove_container_task.delay(_id)
-        elif cmd == "restart":
-            job = restart_container_task.delay(_id)
-
-        if job:
-            job_id = job.id
-            return JsonResponse({"task_id": job_id})
-
-        return JsonResponse({"task_id": None})
-
-
+        }, owner_id)
+        job = task.delay(container.id, owner_id)
+        return JsonResponse({"task_id": job.id})

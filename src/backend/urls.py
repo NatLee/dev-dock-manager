@@ -48,6 +48,8 @@ urlpatterns += [
     path(f"{API_URL_PREFIX}/auth/", include("custom_jwt.urls")),
     # xterm (API and WebSocket only; frontend is Next.js)
     path(f"{MAIN_URL_PREFIX}/", include("xterm.urls"), name="xterm"),
+    # accounts: me, me/password, users (admins)
+    path(f"{MAIN_URL_PREFIX}/api/", include("accounts.urls")),
 ]
 
 # -------------- START - Swagger View --------------

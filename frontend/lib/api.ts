@@ -4,7 +4,8 @@ function getOrigin(): string {
     if (env) return env.replace(/\/$/, "");
     return window.location.origin;
   }
-  return process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8000";
+  // Server-side rendering never calls the API; there is no page origin to fall back to.
+  return process.env.NEXT_PUBLIC_API_ORIGIN || "";
 }
 
 export function getApiBase(): string {
@@ -29,4 +30,17 @@ export async function apiFetch(
   if (token) headers.set("Authorization", `Bearer ${token}`);
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   return fetch(url, { ...init, headers });
+}
+
+/** The message to show for a failed API call: `{"error": "..."}`, `{"detail": "..."}` or field errors. */
+export async function errorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = (await res.json()) as Record<string, unknown>;
+    const first = data.error ?? data.detail ?? Object.values(data)[0];
+    if (Array.isArray(first)) return first.join(" ");
+    if (typeof first === "string" && first) return first;
+  } catch {
+    // not JSON
+  }
+  return fallback;
 }
