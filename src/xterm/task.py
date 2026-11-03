@@ -1,11 +1,10 @@
-import os
-
 import docker
+from django.conf import settings
 from django_rq import job
 
 from xterm.consumers import send_notification_to_group
 
-DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "d-gui-network")
+DOCKER_NETWORK = settings.DOCKER_NETWORK
 
 @job
 def run_image_task(image_name, ports, volumes, environment, name, privileged=False, nvdocker=False):
