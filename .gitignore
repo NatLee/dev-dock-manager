@@ -1,6 +1,7 @@
 # Custom ignore files
 homes
 images
+!docs/images/
 
 log
 logs

@@ -1,0 +1,117 @@
+<!doctype html>
+<!--
+  "Dev Dock family" overview, shared by the READMEs of dev-dock, dev-dock-manager and dev-dock-manager-rust.
+  Render the light and dark versions (#dark picks the dark theme) with a Chromium-based browser, e.g.
+    msedge --headless=new --hide-scrollbars --force-device-scale-factor=2 --window-size=960,520
+           --default-background-color=00000000 --virtual-time-budget=5000
+           --screenshot=family-dark.png "file:///…/family.html#dark"
+  then convert to WebP (magick family-dark.png -quality 90 family-dark.webp).
+  Every name, port and path below comes from the repos' Dockerfile / docker-compose.yml / source.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dev Dock family</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=block" rel="stylesheet">
+<link rel="stylesheet" href="diagram.css">
+<style>
+  body, .frame { width: 960px; height: 520px; }
+  .repo { top: 124px; width: 272px; height: 176px; }
+  #dock { left: 40px; } #django { left: 344px; } #rust { left: 648px; }
+  .repo .sub { min-height: 36px; }
+  .repo .chip { font-size: 11px; padding: 2px 6px; }
+  #host { left: 40px; top: 352px; width: 880px; height: 140px; }
+  #image { left: 62px; top: 392px; width: 228px; }
+  .box { position: absolute; top: 392px; width: 182px; background: var(--card); border: 1px solid var(--line);
+         border-radius: 12px; padding: 9px 12px; box-shadow: var(--shadow); }
+  .box .row { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  .box .row i { width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
+  .box .row i.off { background: var(--wire); }
+  .box .row .type { font-weight: 500; }
+  .box .sub { margin-top: 4px; }
+  #c1 { left: 344px; } #c2 { left: 540px; } #c3 { left: 736px; }
+  .foot { position: absolute; left: 62px; top: 462px; font-size: 12px; color: var(--muted); }
+  .foot code { font-size: 11px; }
+</style>
+</head>
+<body>
+<script>if (location.hash.includes('dark')) document.documentElement.className = 'dark';</script>
+<div class="frame">
+  <div class="dots"></div>
+
+  <header>
+    <div class="mark">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="24" height="17" rx="3"/>
+        <path d="M8.5 10.5l3 2.5-3 2.5M14.5 15.5h5"/>
+        <path d="M10 26h10M15 21v5"/>
+      </svg>
+    </div>
+    <div>
+      <h1>Dev Dock</h1>
+      <p class="tag">One <b>desktop image</b> for development, and two dashboards that hand it out.</p>
+    </div>
+  </header>
+  <div class="pip"><span>image</span>gui-vnc</div>
+
+  <svg class="wires" width="960" height="520">
+    <!-- managers include dev-dock as the gui/ submodule -->
+    <path class="wire" d="M784 124 V108 H176 V118"/>
+    <path class="head" d="M176 124 l-5 -9 h10 z"/>
+    <path class="wire" d="M480 108 V118"/>
+    <!-- docker build: dev-dock -> image -->
+    <path class="wire solid" d="M240 300 V386"/>
+    <path class="head" d="M240 392 l-5 -9 h10 z"/>
+    <!-- managers -> containers via the Docker socket -->
+    <path class="wire solid" d="M480 300 V346"/>
+    <path class="head" d="M480 352 l-5 -9 h10 z"/>
+    <path class="wire solid" d="M784 300 V346"/>
+    <path class="head" d="M784 352 l-5 -9 h10 z"/>
+    <!-- image -> containers -->
+    <path class="wire" d="M290 418 H336"/>
+    <path class="head" d="M342 418 l-9 -5 v10 z"/>
+  </svg>
+  <div class="wl" style="left: 196px; top: 99px;">both include dev-dock as the <code>gui/</code> submodule</div>
+  <div class="wl" style="left: 250px; top: 316px;"><code>docker build</code></div>
+  <div class="wl" style="left: 490px; top: 306px;">create · start · stop · terminal<br>through the Docker socket</div>
+  <div class="wl" style="left: 794px; top: 306px;">same calls,<br>same Traefik labels</div>
+
+  <div class="node repo" id="dock">
+    <div class="label c-blue"><i></i>The image <span class="type">Shell · Dockerfile</span></div>
+    <div class="title">dev-dock</div>
+    <div class="sub">Debian + Xfce desktop in a container, for a browser, a VNC client or SSH.</div>
+    <div class="chips"><span class="chip">VNC :5901</span><span class="chip">noVNC :6901</span><span class="chip">SSH :22</span></div>
+    <div class="sub">VS Code · Firefox · Miniconda · AnyDesk</div>
+  </div>
+
+  <div class="node repo" id="django">
+    <div class="label c-green"><i></i>Manager <span class="type">Python</span></div>
+    <div class="title">dev-dock-manager</div>
+    <div class="sub">Django REST + Channels API, RQ worker, Redis, SQLite.</div>
+    <div class="chips"><span class="chip">Traefik :8000</span><span class="chip">Next.js</span></div>
+    <div class="sub">Login, create, web terminal, NoVNC</div>
+  </div>
+
+  <div class="node repo" id="rust">
+    <div class="label c-orange"><i></i>Manager <span class="type">Rust</span></div>
+    <div class="title">dev-dock-manager-rust</div>
+    <div class="sub">The same manager with a Rust API (axum + bollard), Redis, SQLite.</div>
+    <div class="chips"><span class="chip">Traefik :8000</span><span class="chip">Next.js</span></div>
+    <div class="sub">Same dashboard, same routes</div>
+  </div>
+
+  <div class="node ghost" id="host">
+    <div class="label c-teal"><i></i>One Docker host</div>
+  </div>
+  <div class="node" id="image" style="padding: 10px 13px;">
+    <div class="label c-blue"><i></i>Image</div>
+    <div class="title sm mono" style="margin-top: 5px;">gui-vnc</div>
+  </div>
+  <div class="box" id="c1"><div class="row"><i></i>alice <span class="type">gui-vnc</span></div><div class="sub"><code>/novnc/alice/</code></div></div>
+  <div class="box" id="c2"><div class="row"><i></i>bob <span class="type">gui-vnc</span></div><div class="sub"><code>/novnc/bob/</code></div></div>
+  <div class="box" id="c3"><div class="row"><i class="off"></i>carol <span class="type">stopped</span></div><div class="sub"><code>/novnc/carol/</code></div></div>
+  <div class="foot">One container per environment, from whichever manager you run. The desktop is at <code>/novnc/&lt;name&gt;/</code> through Traefik, SSH on its own host port.</div>
+</div>
+</body>
+</html>
