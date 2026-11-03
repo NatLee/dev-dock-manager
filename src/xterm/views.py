@@ -1,5 +1,4 @@
 import docker
-import os
 
 from django.http import JsonResponse
 
@@ -29,8 +28,10 @@ from xterm.schemas import count_param, free_ports_response, error_response
 from xterm.schemas import run_container_request_body, run_container_responses
 from xterm.schemas import check_port_params, check_port_in_used_response
 
-# GUI image tag name prefix
-GUI_IMAGE_TAG_NAME = os.environ.get("DOCKER_IMAGE_NAME", "gui-vnc")
+from django.conf import settings
+
+# Image the desktops are created from (DOCKER_IMAGE_NAME)
+GUI_IMAGE_TAG_NAME = settings.DOCKER_IMAGE_NAME
 
 
 class NvidiaDockerCheckAPIView(APIView):

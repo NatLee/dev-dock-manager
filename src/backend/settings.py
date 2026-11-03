@@ -7,10 +7,13 @@ https://docs.djangoproject.com/en/4.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
+import os
 import sys
 from datetime import timedelta
 import logging
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 logger = logging.getLogger(__name__)
 
@@ -23,15 +26,35 @@ print(f"---------- Project DIR: {BASE_DIR}")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-uye!=@*gjois#e#8u*3law8=d4^&5s0sh-w*+r3_%+x5tn$lru'
+def env_flag(name: str, default: bool = False) -> bool:
+    """An on/off setting from the environment: 1/true/yes/on (any case) means on."""
+    value = os.environ.get(name)
+    return default if value is None else value.strip().lower() in ("1", "true", "yes", "on")
 
 
-# ----------------------------- START - DEBUG setting -------------------------------
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# ----------------------------- START - DEBUG / SECRET_KEY -------------------------------
+# Off unless DJANGO_DEBUG says otherwise: debug pages leak settings and stack traces.
+DEBUG = env_flag("DJANGO_DEBUG")
 print(f"---------- Debug mode: {DEBUG}")
-# ------------------------------ END - DEBUG setting --------------------------------
+
+# Signs sessions and the login tokens (SIMPLE_JWT below), so it must be secret and there is no
+# default to fall back on, not even in debug mode. docker-compose.yml reads it from .env.
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is not set. Put a long random value in .env (see .env.example)."
+    )
+# ------------------------------ END - DEBUG / SECRET_KEY --------------------------------
+
+# -------------- START - Docker / Redis --------------
+# Image the desktops are created from, matched exactly by name (tag ignored).
+DOCKER_IMAGE_NAME = os.environ.get("DOCKER_IMAGE_NAME", "gui-vnc")
+# Network the desktops join so Traefik can reach their noVNC port.
+DOCKER_NETWORK = os.environ.get("DOCKER_NETWORK", "d-gui-network")
+# Host whose ports are checked before an SSH port is handed out (the Docker host).
+HOST_FOR_PORT_CHECK = os.environ.get("HOST_FOR_PORT_CHECK", "host.docker.internal")
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379")
+# -------------- END - Docker / Redis --------------
 
 ALLOWED_HOSTS = ['*']
 
@@ -121,7 +144,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("d-gui-manager-redis", 6379)],
+            "hosts": [REDIS_URL],
         },
     },
 }
@@ -205,7 +228,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 RQ_QUEUES = {
     'default': {
-        'URL': 'redis://d-gui-manager-redis:6379',  # Adjust the Redis URL as needed.
+        'URL': REDIS_URL,
         'DEFAULT_TIMEOUT': 500,
         'USE_REDIS_CACHE': 'default',
     },
@@ -214,7 +237,7 @@ RQ_QUEUES = {
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': 'redis://d-gui-manager-redis:6379',
+        'LOCATION': REDIS_URL,
     },
 }
 
