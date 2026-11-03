@@ -305,13 +305,12 @@ LOGGING = {
             'propagate': True,
             'level': "INFO"
         },
-        '''
-        'django.db.backends': {
-            'handlers': ['database'],
-            'propagate': False,
-            'level': "INFO"
-        },
-        '''
+        # Every SQL query, for debugging; uncomment to enable:
+        # 'django.db.backends': {
+        #     'handlers': ['database'],
+        #     'propagate': False,
+        #     'level': "INFO"
+        # },
         'django.request': {
             'handlers': ['file'],
             'propagate': False,
