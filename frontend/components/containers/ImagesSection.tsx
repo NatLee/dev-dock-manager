@@ -51,9 +51,9 @@ export function ImagesSection() {
             <li className="flex flex-wrap items-baseline gap-2">
               <span className="font-medium">Pull:</span>
               <code className="rounded border border-border bg-background px-2 py-1 font-mono text-xs">
-                docker pull natlee/gui-vnc:&lt;TAG&gt;
+                docker pull natlee/gui-vnc:&lt;TAG&gt; &amp;&amp; docker tag natlee/gui-vnc:&lt;TAG&gt; gui-vnc
               </code>
-              <span className="text-text-muted">(e.g. 20260208-arm64 or 20241202-x86 —</span>
+              <span className="text-text-muted">(tags are listed on</span>
               <a
                 href={DOCKER_HUB_URL}
                 target="_blank"

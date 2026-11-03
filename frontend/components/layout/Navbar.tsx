@@ -5,14 +5,17 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
-const navLinks = [
-  { href: "/dashboard/containers", label: "Containers" },
+const allLinks = [
+  { href: "/dashboard/containers", label: "Containers", adminOnly: false },
+  { href: "/dashboard/users", label: "Users", adminOnly: true },
+  { href: "/dashboard/account", label: "Account", adminOnly: false },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
-  const { logout } = useAuth();
+  const { logout, me } = useAuth();
   const [open, setOpen] = useState(false);
+  const navLinks = allLinks.filter((l) => !l.adminOnly || me?.is_admin);
 
   return (
     <nav className="sticky top-0 z-40 border-b border-border bg-surface-nav shadow-sm">
@@ -41,6 +44,14 @@ export function Navbar() {
             </Link>
           ))}
           <div className="ml-2 h-4 w-px bg-slate-500" aria-hidden />
+          {me && (
+            <span className="px-2 text-sm text-slate-300" title={me.is_admin ? "Administrator" : "User"}>
+              {me.username}
+              {me.is_admin && (
+                <span className="ml-1.5 rounded bg-white/15 px-1.5 py-0.5 text-xs font-medium text-white">admin</span>
+              )}
+            </span>
+          )}
           <button
             type="button"
             onClick={logout}

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getWsOrigin } from "@/lib/api";
+import { getAccessToken } from "@/lib/auth";
 
 type NotificationMessage = {
   message: {
@@ -43,7 +44,9 @@ export function useNotificationsWs(
     function connect() {
       const base = getWsOrigin();
       const url = `${base}/ws/notifications/`;
-      const ws = new WebSocket(url);
+      // Same authentication as the console: the JWT as a "token.<base64>" subprotocol. The server
+      // answers with the "notifications" subprotocol and only sends this user's notifications.
+      const ws = new WebSocket(url, ["notifications", "token." + btoa(getAccessToken() ?? "")]);
       wsRef.current = ws;
 
       ws.onopen = () => {

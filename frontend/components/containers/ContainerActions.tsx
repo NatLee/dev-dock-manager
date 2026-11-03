@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 import type { Container } from "@/types/api";
-
-const getOrigin = () =>
-  typeof window !== "undefined"
-    ? (process.env.NEXT_PUBLIC_API_ORIGIN || window.location.origin)
-    : process.env.NEXT_PUBLIC_API_ORIGIN || "http://localhost:8000";
+import { getApiBase } from "@/lib/api";
 
 type Props = {
   container: Container;
@@ -20,7 +16,7 @@ export function ContainerActions({
   waiting,
 }: Props) {
   const running = container.status === "running";
-  const origin = getOrigin();
+  const origin = getApiBase();
   const isSameOrigin = typeof window !== "undefined" && origin === window.location.origin;
   const novncPath = `/novnc/${container.name}/?path=novnc/${container.name}/websockify`;
 

@@ -2,6 +2,7 @@
 
 import type { Container } from "@/types/api";
 import { ContainerActions } from "./ContainerActions";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Props = {
   containers: Container[];
@@ -16,6 +17,8 @@ export function ContainerTable({
   waitingIds = new Set(),
   onContainerClick,
 }: Props) {
+  // Admins see everyone's containers, so show whose each one is.
+  const showOwner = useAuth().me?.is_admin ?? false;
   return (
     <div className="overflow-x-auto rounded-xl border border-border bg-background shadow-sm">
       <table className="min-w-full divide-y divide-border">
@@ -27,6 +30,11 @@ export function ContainerTable({
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
               Name
             </th>
+            {showOwner && (
+              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
+                Owner
+              </th>
+            )}
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted">
               Size (GB)
             </th>
@@ -70,6 +78,9 @@ export function ContainerTable({
                   {item.short_id}
                 </td>
                 <td className="px-4 py-3 text-sm text-text">{item.name}</td>
+                {showOwner && (
+                  <td className="px-4 py-3 text-sm text-text-muted">{item.owner ?? "—"}</td>
+                )}
                 <td className="px-4 py-3 text-sm text-text">
                   {sizeRawGb} | {sizeFsGb}
                 </td>
