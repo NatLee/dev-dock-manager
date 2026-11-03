@@ -79,6 +79,15 @@ jobs:
           docker exec d-gui-manager-web python manage.py shell -c \
             "from xterm.consumers import send_notification_to_group; send_notification_to_group({'action': 'CI', 'details': 'still listening'}, owner_id=10)"
           wait "$check"
+      - name: docker stop ends the backend cleanly
+        run: |
+          start=$(date +%s%N)
+          docker stop -t 10 d-gui-manager-web
+          elapsed_ms=$(( ($(date +%s%N) - start) / 1000000 ))
+          code=$(docker inspect -f '{{.State.ExitCode}}' d-gui-manager-web)
+          echo "docker stop took ${elapsed_ms} ms, exit code ${code}"
+          test "$code" -eq 0
+          test "$elapsed_ms" -lt 5000
       - name: Logs
         if: always()
         run: docker compose logs --no-color backend traefik | tail -n 200
