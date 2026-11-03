@@ -219,7 +219,8 @@ desktop's VNC password, not by the dashboard login.
 ## Nvidia Docker Support
 
 Optional. With NVIDIA drivers and the NVIDIA Container Toolkit on the host, the create dialog lets you give a
-container all GPUs (`/dashboard/api/nvdocker/check` tells the dashboard whether that works).
+container all GPUs (`/dashboard/api/nvdocker/check` tells the dashboard whether that works). The check runs
+`nvidia-smi` in `nvidia/cuda:11.0.3-base-ubuntu20.04`; to use another CUDA image, set `NVIDIA_CHECK_IMAGE` in `.env`.
 
 ## Dev helper script
 
