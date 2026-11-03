@@ -50,10 +50,14 @@ jobs:
           done
           echo "POST /api/auth/token with bad credentials -> $code"
           test "$code" = 401
-      - name: Both backend programs keep running, debug is off
+      - name: Both backend programs keep running on Daphne, debug is off
         run: |
           docker exec d-gui-manager-web supervisorctl -c /etc/supervisor/conf.d/supervisord.conf status | tee status.txt
           test "$(grep -c RUNNING status.txt)" = 2
+          # The API is served by Daphne itself, not by the development runserver and its auto-reloader
+          docker exec d-gui-manager-web sh -c 'for p in /proc/[0-9]*/cmdline; do tr "\0" " " < "$p"; echo; done' > procs.txt
+          grep "backend.asgi:application" procs.txt
+          if grep "manage.py runserver" procs.txt; then echo "runserver is still running"; exit 1; fi
           docker exec d-gui-manager-web python manage.py shell -c "from django.conf import settings; assert not settings.DEBUG, settings.DEBUG"
       - uses: actions/setup-node@v7
         with:

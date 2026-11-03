@@ -84,7 +84,7 @@ Traefik learns these routes from Docker labels. The services get theirs from `do
 desktop gets its own when the backend creates it. All of them share the external network `d-gui-network`. SSH
 is the one thing that skips Traefik: each desktop publishes port 22 on a host port you choose.
 
-Inside `d-gui-manager-web`, supervisord runs two programs: `manage.py runserver` (served by Daphne, so the same
+Inside `d-gui-manager-web`, supervisord runs two programs: Daphne (the ASGI server from Channels, so the same
 process handles REST calls and WebSockets) and `manage.py rqworker default`, which does the Docker work. Redis
 (`d-gui-manager-redis`) carries the job queue, the WebSocket notifications and the cache.
 
@@ -184,9 +184,9 @@ You need Linux with Docker running (the backend talks to `/var/run/docker.sock`)
   opened from. `NEXT_PUBLIC_API_ORIGIN` in `frontend/.env.local` is only for running the frontend on its own
   (`npm run dev`), and Next.js bakes it in at build time.
 - **Ports.** 8000 is the app, 8080 is the Traefik dashboard. Each desktop also takes the SSH port you pick.
-- **Data and code.** `./src` is mounted into the backend for hot reloading, so the SQLite database
-  (`src/db.sqlite3`) and the logs (`src/logs/`) end up there. The desktops are ordinary containers named after
-  what you typed, so `docker ps` shows them.
+- **Data and code.** `./src` is mounted into the backend, so the SQLite database (`src/db.sqlite3`) and the
+  logs (`src/logs/`) end up there. Daphne doesn't reload when the code changes; `./dev-tool.sh backend-debug`
+  does. The desktops are ordinary containers named after what you typed, so `docker ps` shows them.
 - **Image name.** The backend creates containers from `DOCKER_IMAGE_NAME` (`gui-vnc` in
   `docker-compose.yml`) and only lists containers whose image has exactly that name, which is why a pulled
   image needs the `gui-vnc` tag.
@@ -229,7 +229,8 @@ container all GPUs (`/dashboard/api/nvdocker/check` tells the dashboard whether 
 
 - `bash`: shell in the backend container (`d-gui-manager-web`).
 - `create-superuser`: create a Django superuser.
-- `backend-debug`: stop the supervised Django server and run `runserver` in the foreground.
+- `backend-debug`: stop the supervised Daphne server and run `runserver` in the foreground, which reloads when
+  the code changes.
 - `supervisorctl`: manage the programs supervisord runs.
 
 # License
