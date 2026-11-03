@@ -133,14 +133,18 @@ You need Linux with Docker running (the backend talks to `/var/run/docker.sock`)
    docker tag natlee/gui-vnc:20260208-arm64 gui-vnc
    ```
 
-3. **Create the network and start the stack:**
+3. **Set the secret key, create the network and start the stack:**
 
    ```bash
+   cp .env.example .env
+   sed -i "s|^DJANGO_SECRET_KEY=.*|DJANGO_SECRET_KEY=$(openssl rand -base64 48)|" .env
    docker network create d-gui-network
    docker compose build && docker compose up -d
    ```
 
-   The backend runs the database migrations when it starts. The `nvidia-cuda` service only prints
+   `DJANGO_SECRET_KEY` signs sessions and login tokens, so it has no default: compose stops with a clear
+   message if it's missing. Debug pages stay off unless you set `DJANGO_DEBUG=1` in `.env`. The backend
+   applies the database migrations when it starts. The `nvidia-cuda` service only prints
    "CUDA image ready" and exits.
 
 4. **Create a superuser** to log in with:
@@ -175,11 +179,7 @@ You need Linux with Docker running (the backend talks to `/var/run/docker.sock`)
 
 It's built for a trusted group on one machine. Every account can see and control every desktop (there's no
 per-user ownership), and can create privileged containers. With the Docker socket mounted, that amounts to
-root on the host. Also:
-
-- `src/backend/settings.py` has `DEBUG = True` and a hard-coded `SECRET_KEY`, which also signs the login
-  tokens. Change both;
-- the Traefik dashboard on 8080 runs with `--api.insecure`, so don't expose that port.
+root on the host. Also, the Traefik dashboard on 8080 runs with `--api.insecure`, so don't expose that port.
 
 ## Nvidia Docker Support
 
