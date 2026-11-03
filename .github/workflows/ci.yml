@@ -37,12 +37,12 @@ jobs:
           docker compose up -d --build backend frontend redis traefik
       - name: Wait for the dashboard and the API behind Traefik
         run: |
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             curl -fsS -o /dev/null http://localhost:8000/login && break
             sleep 2
           done
           curl -fsS -o /dev/null -w "GET /login -> %{http_code}\n" http://localhost:8000/login
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' \
               -d '{"username":"nobody","password":"wrong"}' http://localhost:8000/api/auth/token)
             [ "$code" = 401 ] && break
@@ -55,6 +55,26 @@ jobs:
           docker exec d-gui-manager-web supervisorctl -c /etc/supervisor/conf.d/supervisord.conf status | tee status.txt
           test "$(grep -c RUNNING status.txt)" = 2
           docker exec d-gui-manager-web python manage.py shell -c "from django.conf import settings; assert not settings.DEBUG, settings.DEBUG"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # Two ways the dashboard's WebSockets broke: tokens of user ids 10-99 made a subprotocol browsers
+      # refuse, and redis-py 8 cut the channel layer's 5-second Redis wait off. So: user id 10, a socket
+      # opened with the dashboard's own subprotocol code, held well past 5 seconds, then a notification.
+      - name: A notification WebSocket stays open and still receives (user id 10)
+        run: |
+          docker exec d-gui-manager-web python manage.py shell -c \
+            "from django.contrib.auth.models import User; User.objects.create_user('ws-check', password='ws-check-pass-2026', id=10)"
+          token=$(curl -fsS -X POST -H 'Content-Type: application/json' \
+            -d '{"username":"ws-check","password":"ws-check-pass-2026"}' http://localhost:8000/api/auth/token \
+            | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log(JSON.parse(s).access_token))")
+          node --no-warnings --experimental-strip-types .github/scripts/websocket-check.mjs \
+            ws://localhost:8000/ws/notifications/ "$token" 15 &
+          check=$!
+          sleep 17
+          docker exec d-gui-manager-web python manage.py shell -c \
+            "from xterm.consumers import send_notification_to_group; send_notification_to_group({'action': 'CI', 'details': 'still listening'}, owner_id=10)"
+          wait "$check"
       - name: Logs
         if: always()
         run: docker compose logs --no-color backend traefik | tail -n 200

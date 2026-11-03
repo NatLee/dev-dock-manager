@@ -1,10 +1,11 @@
 """Permission rules for desktops: users see and act on their own, admins on all, everything else is a
-404; only admins create privileged containers; notifications reach only the owner and the admins.
+404; only admins create privileged containers; notifications reach only the owner and the admins;
+every login token makes a WebSocket subprotocol browsers accept; the channel layer outlasts its waits.
 
 Docker is replaced by a small in-memory fake (xterm.access.docker_client is the one place the code
 gets a client from), so these tests need neither Docker nor Redis.
 """
-import base64
+import re
 from unittest import mock
 
 import docker
@@ -13,12 +14,15 @@ from channels.testing import WebsocketCommunicator
 from django.contrib.auth.models import User
 from django.test import SimpleTestCase, TestCase, override_settings
 from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from xterm import access
+from xterm.consumers import token_from_subprotocols
 
 GUI = "gui-vnc"  # settings.DOCKER_IMAGE_NAME default
 IN_MEMORY_LAYER = {"default": {"BACKEND": "channels.layers.InMemoryChannelLayer"}}
+# What a WebSocket subprotocol may contain (an RFC 7230 token); browsers throw on anything else.
+SUBPROTOCOL = re.compile(r"^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$")
 
 
 class FakeContainer:
@@ -194,7 +198,7 @@ class WebSocketPermissionsTest(TestCase):
 
     @staticmethod
     def token_protocol(user):
-        return "token." + base64.b64encode(token_for(user).encode()).decode()
+        return "token." + token_for(user)  # as frontend/lib/wsProtocols.ts builds it
 
     async def communicator(self, path, protocols):
         from backend.asgi import application
@@ -212,7 +216,7 @@ class WebSocketPermissionsTest(TestCase):
         await comm.disconnect()
 
     async def test_console_refuses_a_bad_token(self):
-        comm, connected, code = await self.communicator("/ws/console/", ["token.bm9wZQ==", "container.x"])
+        comm, connected, code = await self.communicator("/ws/console/", ["token.nope", "container.x"])
         self.assertFalse(connected)
         self.assertEqual(code, 4001)
 
@@ -237,3 +241,42 @@ class WebSocketPermissionsTest(TestCase):
         _, connected, code = await self.communicator("/ws/notifications/", ["notifications"])
         self.assertFalse(connected)
         self.assertEqual(code, 4001)
+
+    async def test_two_digit_user_ids_connect(self):
+        # Their base64-encoded tokens ended in "=", so the browser refused to open the socket at all.
+        carol = await sync_to_async(User.objects.create_user)("carol", password="x", id=10)
+        comm, connected, subprotocol = await self.communicator(
+            "/ws/notifications/", ["notifications", self.token_protocol(carol)])
+        self.assertTrue(connected)
+        self.assertEqual(subprotocol, "notifications")
+        await comm.disconnect()
+
+
+class TokenSubprotocolTest(SimpleTestCase):
+    def test_every_user_id_gives_a_subprotocol_browsers_accept(self):
+        # Base64-encoding the JWT broke user ids 10-99 ("=" padding); the JWT itself is always valid.
+        for user_id in range(1, 1001):
+            jwt = str(AccessToken.for_user(User(id=user_id, username=f"user{user_id}")))
+            protocol = "token." + jwt
+            self.assertRegex(protocol, SUBPROTOCOL, f"user id {user_id}")
+            self.assertEqual(token_from_subprotocols(["notifications", protocol]), jwt)
+
+    def test_missing_or_empty_token(self):
+        self.assertIsNone(token_from_subprotocols(["notifications"]))
+        self.assertIsNone(token_from_subprotocols(["token."]))
+        self.assertIsNone(token_from_subprotocols(None))
+
+
+class ChannelLayerTimeoutTest(SimpleTestCase):
+    def test_redis_reads_outlast_the_layers_longest_wait(self):
+        # redis-py 8 closes reads after 5 s by default, exactly as long as the layer blocks waiting for
+        # a message, so every WebSocket dropped after about 5 s. Check what redis-py will really get.
+        from channels_redis.core import RedisChannelLayer
+        from channels_redis.utils import create_pool, decode_hosts
+        from django.conf import settings
+
+        for host in decode_hosts(settings.CHANNEL_LAYERS["default"]["CONFIG"]["hosts"]):
+            # make_connection() builds the connection redis-py would use, without connecting
+            timeout = create_pool(host).make_connection().socket_timeout
+            self.assertIsNotNone(timeout, "a read with no timeout never notices a dead Redis")
+            self.assertGreater(timeout, RedisChannelLayer.brpop_timeout)
