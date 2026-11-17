@@ -116,19 +116,19 @@ What each click does:
 
 - Login
 
-    ![Logging in to the dashboard](./doc/login.gif)
+    ![Logging in to the dashboard](./docs/images/login.gif)
 
 - Create container
 
-    ![create](./doc/create.gif)
+    ![create](./docs/images/create.gif)
 
 - Web Terminal
 
-    ![web terminal](./doc/console.gif)
+    ![web terminal](./docs/images/console.gif)
 
 - NoVNC
 
-    ![novnc](./doc/novnc.gif)
+    ![novnc](./docs/images/novnc.gif)
 
 ## Quick start
 
