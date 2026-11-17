@@ -1,0 +1,311 @@
+<!doctype html>
+<!--
+  Repository cover: the picture at the top of the README (docs/images/cover.webp). It is 1280×640,
+  the shape GitHub wants for a social preview too.
+
+  Re-render from the repo root with Edge or Chrome (output is 2×, 2560×1280; the time budget lets the
+  Google Fonts load first), then convert to WebP:
+    msedge --headless=new --hide-scrollbars --window-size=1280,640 --force-device-scale-factor=2 \
+      --virtual-time-budget=8000 --user-data-dir="$(mktemp -d)" \
+      --screenshot="$PWD/cover.png" "file://$PWD/docs/images/src/cover.html"
+    magick cover.png -quality 90 docs/images/cover.webp
+  Both paths must be absolute: the browser reads a bare path as a web address and writes the screenshot
+  relative to its own folder. The throwaway profile keeps it from handing the job to a browser window
+  that is already open. In Git Bash on Windows use $(pwd -W) and file:/// instead of $PWD and file://.
+
+  cover.png is the file for GitHub's social preview (Settings → General → Social preview takes PNG or
+  JPG, not WebP). Keep it out of the repo; the README only needs the WebP.
+
+  - The first :root block is the dark theme of frontend/app/globals.css; the second says where the
+    cover uses each colour, following the classes in frontend/components/containers/ and
+    frontend/app/dashboard/containers/page.tsx. Fonts are the frontend's Geist pair.
+  - dev-dock-manager-rust has the same file with its own colours. Layout changes belong in both.
+  - The mark is the monitor-and-prompt glyph of the Dev Dock family diagrams (family.html).
+  - The NoVNC address follows ContainerActions.tsx. Names, ports and IDs are examples, not real data.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dev Dock Manager cover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=block" rel="stylesheet">
+<style>
+  /* frontend/app/globals.css, dark theme */
+  :root {
+    --background: #0f172a;
+    --color-surface: #1e293b;
+    --color-border: #334155;
+    --color-text: #f1f5f9;
+    --color-text-muted: #94a3b8;
+    --color-primary: #2563eb;
+    --color-primary-hover: #1d4ed8;
+    --color-success: #16a34a;
+    --color-warning: #d97706;
+  }
+  /* where the cover uses them, plus the Tailwind colours the components name directly */
+  :root {
+    --bg: var(--background);
+    --line: var(--color-border);
+    --text: var(--color-text);
+    --muted: var(--color-text-muted);
+    --surface: var(--color-surface);
+    --accent: var(--color-primary);
+    --accent-deep: var(--color-primary-hover);
+    --glow: var(--color-primary);
+    --card: var(--background);                              /* ContainerTable: bg-background */
+    --run-ink: #86efac;                                     /* status pill: dark:text-green-300 */
+    --run-tint: rgb(20 83 45 / .4);                         /*   on dark:bg-green-900/40 */
+    --off-ink: #e2e8f0;                                     /* dark:text-slate-200 */
+    --off-tint: rgb(51 65 85 / .5);                         /*   on dark:bg-slate-700/50 */
+    --start: #16a34a;                                       /* Start button: bg-green-600 */
+    --ok: var(--color-success);                             /* Connected dot: bg-success */
+    --avatar-1: var(--color-primary);
+    --avatar-2: var(--color-warning);
+    --avatar-3: var(--color-success);
+    /* the editor inside the desktop: VS Code's Dark+ */
+    --code-bg: #1e1e1e; --code-bar: #181818; --code-gutter: #333333;
+    --code-k: #c586c0; --code-f: #dcdcaa; --code-s: #ce9178; --code-t: #4ec9b0; --code-o: #569cd6; --code-p: #6a9955; --code-v: #9cdcfe;
+  }
+  :root {
+    --sans: "Geist", "Segoe UI", system-ui, sans-serif;
+    --mono: "Geist Mono", "JetBrains Mono", Consolas, monospace;
+    --shadow: 0 2px 4px rgba(0, 0, 0, .35), 0 18px 48px rgba(0, 0, 0, .45);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1280px; height: 640px; overflow: hidden; }
+  body {
+    position: relative; font-family: var(--sans); color: var(--text);
+    background:
+      radial-gradient(620px 420px at 88% 18%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+      radial-gradient(520px 360px at 0% 100%, color-mix(in srgb, var(--glow) 12%, transparent), transparent 70%),
+      var(--bg);
+  }
+  .dots {
+    position: absolute; inset: 0; opacity: .5;
+    background-image: radial-gradient(var(--line) 1px, transparent 1.3px); background-size: 24px 24px;
+    -webkit-mask-image: linear-gradient(100deg, #000 0%, transparent 42%, transparent 58%, #000 100%);
+  }
+
+  /* ── left: name and what it does ── */
+  .intro { position: absolute; left: 72px; top: 92px; width: 470px; }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .mark {
+    width: 54px; height: 54px; border-radius: 15px; display: grid; place-items: center;
+    background: linear-gradient(140deg, var(--accent), var(--accent-deep));
+    box-shadow: 0 6px 20px color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+  .eyebrow { font-size: 14px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .eyebrow b { color: var(--text); font-weight: 600; }
+  h1 { margin-top: 30px; font-size: 80px; line-height: .98; font-weight: 800; letter-spacing: -0.045em; }
+  h1 .edition {
+    display: inline-block; vertical-align: 14px; margin-left: 10px; padding: 6px 14px 7px; border-radius: 14px;
+    font-size: 24px; font-weight: 600; letter-spacing: -0.01em;
+    color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .lede { margin-top: 26px; font-size: 22px; line-height: 1.42; color: var(--muted); letter-spacing: -0.01em; }
+  .lede b { color: var(--text); font-weight: 500; }
+  .ways { display: flex; gap: 10px; margin-top: 28px; }
+  .way {
+    display: flex; align-items: center; gap: 8px; padding: 8px 13px 8px 11px; border-radius: 12px;
+    font-size: 15.5px; font-weight: 500; white-space: nowrap;
+    background: color-mix(in srgb, var(--surface) 50%, transparent); border: 1px solid var(--line);
+  }
+  .way svg { color: var(--accent); flex: none; }
+  .stack { position: absolute; left: 72px; bottom: 54px; font-family: var(--mono); font-size: 14px; color: var(--muted); letter-spacing: .01em; }
+  .stack span { color: var(--line); margin: 0 9px; }
+
+  /* ── right: what a person gets ── */
+  .win { position: absolute; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .bar { height: 32px; display: flex; align-items: center; gap: 7px; padding: 0 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .bar i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
+  .url {
+    margin-left: 10px; flex: 1; height: 20px; border-radius: 7px; padding: 0 10px; display: flex; align-items: center;
+    font-family: var(--mono); font-size: 11px; color: var(--muted); background: var(--bg); white-space: nowrap; overflow: hidden;
+  }
+  .url b { color: var(--text); font-weight: 500; }
+
+  /* NoVNC tab with the Xfce desktop */
+  #desktop { left: 640px; top: 52px; width: 588px; height: 372px; }
+  .screen {
+    position: relative; height: 340px; overflow: hidden;
+    background:
+      radial-gradient(300px 300px at 78% 62%, rgba(255, 255, 255, .10), transparent 65%),
+      radial-gradient(circle at 78% 62%, transparent 118px, rgba(255, 255, 255, .07) 119px, transparent 124px),
+      radial-gradient(circle at 78% 62%, transparent 168px, rgba(255, 255, 255, .05) 169px, transparent 173px),
+      linear-gradient(160deg, #1f7792, #0f4d63 60%, #0b3b4d);
+  }
+  .panel {
+    position: absolute; left: 0; right: 0; top: 0; height: 18px; display: flex; align-items: center; gap: 12px; padding: 0 9px;
+    background: rgba(24, 24, 24, .88); font-size: 9.5px; color: #d6d6d6;
+  }
+  .panel .clock { margin-left: auto; font-family: var(--mono); }
+  .icons { position: absolute; left: 14px; top: 32px; display: grid; gap: 14px; }
+  .icon { width: 60px; white-space: nowrap; display: grid; justify-items: center; gap: 4px; font-size: 8.5px; color: #eef3f5; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+  .icon u { width: 26px; height: 22px; border-radius: 4px; background: linear-gradient(#e9eef2, #b9c4cc); }
+  .icon:nth-child(2) u { background: linear-gradient(#9fb8cf, #6a8aa8); }
+  .icon:nth-child(3) u { background: linear-gradient(#7fb3e6, #4a86c2); }
+  .dock {
+    position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; gap: 6px; padding: 5px 7px;
+    border-radius: 9px; background: rgba(20, 20, 20, .55);
+  }
+  .dock u { width: 18px; height: 18px; border-radius: 5px; background: #4a90c2; }
+  .dock u:nth-child(2) { background: #2b2b2b; border: 1px solid #555; }
+  .dock u:nth-child(3) { background: #2f80ed; }
+  .dock u:nth-child(4) { background: #ff7139; }
+  .dock u:nth-child(5) { background: #9aa4ad; }
+  .dock u:nth-child(6) { background: #e9c46a; }
+  /* an editor window inside the desktop */
+  .editor {
+    position: absolute; left: 86px; top: 34px; width: 330px; height: 236px; border-radius: 7px; overflow: hidden;
+    background: var(--code-bg); box-shadow: 0 10px 30px rgba(0, 0, 0, .45); border: 1px solid rgba(0, 0, 0, .5);
+  }
+  .editor .tb { height: 20px; background: var(--code-bar); display: flex; align-items: center; padding: 0 8px; font-size: 9px; color: #b8b8b0; gap: 6px; }
+  .editor .tb em { font-style: normal; margin-left: auto; letter-spacing: 3px; color: var(--code-p); }
+  .code { padding: 10px 12px; display: grid; gap: 7px; }
+  .ln { display: flex; gap: 6px; align-items: center; height: 7px; }
+  .ln::before { content: ""; width: 10px; height: 5px; border-radius: 2px; background: var(--code-gutter); margin-right: 6px; }
+  .ln s { display: block; height: 6px; border-radius: 3px; }
+  .k { background: var(--code-k); } .f { background: var(--code-f); } .s { background: var(--code-s); }
+  .t { background: var(--code-t); } .o { background: var(--code-o); } .p { background: var(--code-p); }
+  .v { background: var(--code-v); opacity: .75; }
+
+  /* the dashboard's container list */
+  #list { left: 572px; top: 318px; width: 482px; background: var(--card); }
+  .head { display: flex; align-items: center; gap: 10px; padding: 14px 16px 12px; }
+  .head h2 { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+  .live {
+    margin-left: auto; display: flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 8px;
+    border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 50%, transparent); font-size: 11.5px; color: var(--muted);
+  }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+  .add { width: 26px; height: 26px; border-radius: 9px; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 16px; font-weight: 500; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th {
+    text-align: left; padding: 8px 16px; font-size: 9.5px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); background: var(--surface); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  }
+  td { padding: 10px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; background: var(--bg); }
+  tr:nth-child(even) td { background: color-mix(in srgb, var(--surface) 50%, var(--bg)); }
+  tr.on td { background: var(--surface); }                 /* hover: bg-surface */
+  tr:last-child td { border-bottom: 0; }
+  .who { display: flex; align-items: center; gap: 9px; font-weight: 500; }
+  .who u { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; text-decoration: none; font-size: 11px; font-weight: 600; color: #fff; }
+  tr:nth-child(1) .who u { background: var(--avatar-1); }
+  tr:nth-child(2) .who u { background: var(--avatar-2); }
+  tr:nth-child(3) .who u { background: var(--avatar-3); }
+  .mono { font-family: var(--mono); }
+  .st { display: inline-flex; padding: 2px 8px; border-radius: 5px; font-size: 11px; font-weight: 500; }
+  .st.run { color: var(--run-ink); background: var(--run-tint); }
+  .st.off { color: var(--off-ink); background: var(--off-tint); }
+  .btns { display: flex; gap: 5px; }
+  .btn { padding: 3px 8px; border-radius: 9px; font-size: 11.5px; font-weight: 500; color: #fff; background: var(--accent); }
+  .btn.go { background: var(--start); }
+  tr.on .btn:first-child { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+
+  /* SSH into the same container */
+  #ssh { left: 996px; top: 494px; width: 250px; background: color-mix(in srgb, var(--bg) 70%, #000); }
+  #ssh .bar { height: 26px; }
+  #ssh .bar span { margin-left: 8px; font-size: 10.5px; color: var(--muted); font-family: var(--mono); }
+  .term { padding: 12px 14px 16px; font-family: var(--mono); font-size: 12px; line-height: 1.75; color: var(--text); white-space: nowrap; }
+  .term .pr { color: var(--muted); }
+  .term .u { color: var(--run-ink); }
+  .term .cur { display: inline-block; width: 7px; height: 14px; vertical-align: -2px; background: var(--text); }
+</style>
+</head>
+<body>
+<div class="dots"></div>
+
+<section class="intro">
+  <div class="brand">
+    <div class="mark">
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="4" width="24" height="17" rx="3"/>
+        <path d="M8.5 10.5l3 2.5-3 2.5M14.5 15.5h5"/>
+        <path d="M10 26h10M15 21v5"/>
+      </svg>
+    </div>
+    <div class="eyebrow">Part of the <b>Dev Dock</b> family</div>
+  </div>
+  <h1>Dev Dock<br>Manager<span class="edition">Django</span></h1>
+  <p class="lede">A self-hosted dashboard that hands everyone on one machine <b>their own Linux desktop</b>.</p>
+  <div class="ways">
+    <div class="way">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+      Desktop in the browser
+    </div>
+    <div class="way">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l4 4-4 4M12 16h7"/></svg>
+      Web terminal
+    </div>
+    <div class="way">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l2 2M14 9l2 2"/></svg>
+      SSH
+    </div>
+  </div>
+</section>
+<div class="stack">Django<span>/</span>Channels<span>/</span>Next.js<span>/</span>Traefik</div>
+
+<!-- NoVNC tab: bob's desktop -->
+<div class="win" id="desktop">
+  <div class="bar"><i></i><i></i><i></i><div class="url">dev-box<b>/novnc/bob-ml/</b>?path=novnc/bob-ml/websockify</div></div>
+  <div class="screen">
+    <div class="panel"><span>Applications</span><span>train.py — Visual Studio Code</span><span class="clock">14:26</span></div>
+    <div class="icons">
+      <div class="icon"><u></u>Trash</div>
+      <div class="icon"><u></u>File System</div>
+      <div class="icon"><u></u>Home</div>
+    </div>
+    <div class="editor">
+      <div class="tb">train.py — Visual Studio Code<em>•••</em></div>
+      <div class="code">
+        <div class="ln"><s class="k" style="width:34px"></s><s class="v" style="width:52px"></s></div>
+        <div class="ln"><s class="k" style="width:34px"></s><s class="v" style="width:40px"></s><s class="k" style="width:40px"></s><s class="v" style="width:60px"></s></div>
+        <div class="ln"></div>
+        <div class="ln"><s class="t" style="width:26px"></s><s class="f" style="width:58px"></s><s class="o" style="width:44px"></s></div>
+        <div class="ln" style="padding-left:18px"><s class="v" style="width:40px"></s><s class="k" style="width:10px"></s><s class="f" style="width:72px"></s><s class="s" style="width:66px"></s></div>
+        <div class="ln" style="padding-left:18px"><s class="k" style="width:22px"></s><s class="v" style="width:30px"></s><s class="k" style="width:14px"></s><s class="f" style="width:44px"></s></div>
+        <div class="ln" style="padding-left:36px"><s class="v" style="width:56px"></s><s class="k" style="width:10px"></s><s class="t" style="width:34px"></s><s class="s" style="width:84px"></s></div>
+        <div class="ln" style="padding-left:36px"><s class="p" style="width:150px"></s></div>
+        <div class="ln" style="padding-left:18px"><s class="k" style="width:40px"></s><s class="v" style="width:46px"></s></div>
+        <div class="ln"></div>
+        <div class="ln"><s class="t" style="width:26px"></s><s class="f" style="width:40px"></s><s class="o" style="width:20px"></s></div>
+        <div class="ln" style="padding-left:18px"><s class="v" style="width:70px"></s><s class="s" style="width:58px"></s></div>
+        <div class="ln" style="padding-left:18px"><s class="k" style="width:40px"></s><s class="v" style="width:30px"></s></div>
+      </div>
+    </div>
+    <div class="dock"><u></u><u></u><u></u><u></u><u></u><u></u></div>
+  </div>
+</div>
+
+<!-- the dashboard's container list -->
+<div class="win" id="list">
+  <div class="head">
+    <h2>Containers</h2>
+    <div class="live"><i></i>Connected</div>
+    <div class="add">+</div>
+  </div>
+  <table>
+    <thead><tr><th>Name</th><th>SSH</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>
+      <tr><td><div class="who"><u>A</u>alice-web</div></td><td class="mono">1024</td><td><span class="st run">running</span></td>
+          <td><div class="btns"><span class="btn">NoVNC</span><span class="btn">Console</span><span class="btn">Attach</span></div></td></tr>
+      <tr class="on"><td><div class="who"><u>B</u>bob-ml</div></td><td class="mono">1025</td><td><span class="st run">running</span></td>
+          <td><div class="btns"><span class="btn">NoVNC</span><span class="btn">Console</span><span class="btn">Attach</span></div></td></tr>
+      <tr><td><div class="who"><u>C</u>carol-dev</div></td><td class="mono">1026</td><td><span class="st off">exited</span></td>
+          <td><div class="btns"><span class="btn go">Start</span></div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- SSH into the same container -->
+<div class="win" id="ssh">
+  <div class="bar"><i></i><i></i><i></i><span>ssh</span></div>
+  <div class="term">
+    <div><span class="pr">$</span> ssh -p 1025 bob@dev-box</div>
+    <div><span class="u">bob@8b1d77c0a5e2</span>:~$ <span class="cur"></span></div>
+  </div>
+</div>
+</body>
+</html>
