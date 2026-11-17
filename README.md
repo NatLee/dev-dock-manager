@@ -1,10 +1,8 @@
-<div align="center" style="text-align: center">
+![Dev Dock Manager (Django): a self-hosted dashboard that hands everyone on one machine their own Linux desktop, in the browser (NoVNC), in a web terminal or over SSH](docs/images/cover.webp)
+
+<div align="center">
 
 # **Dev Dock Manager**
-
-<p style="text-align: center">
-  <img align="center" src="./doc/login.gif" alt="Logging in to the dashboard">
-</p>
 
 <a href="./LICENSE"><img src="https://img.shields.io/github/license/NatLee/dev-dock-manager" alt="License: MIT"></a>
 
@@ -115,6 +113,10 @@ What each click does:
 7. **Start, stop, restart, remove** go through the same queue. You see `WAITING`, then `STARTED`, `STOPPED` and so on.
 
 ## Interface
+
+- Login
+
+    ![Logging in to the dashboard](./doc/login.gif)
 
 - Create container
 
